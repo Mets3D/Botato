@@ -125,7 +125,6 @@ def directional_angle(start, center, end, clockwise = False):
 	else:
 		return a1 - a0
 
-
 def get_steer_towards(s, target, dd = 1):
 	return clamp(dd * angle_to(s, target, dd) / 15, -1, 1)
 

@@ -1,6 +1,6 @@
 """This file is for code snippets that I'm unlikely to use in the future, but I'd rather not perma-delete them."""
 
-	"""RLUtils ball prediction & rendering."""
+"""RLUtils ball prediction & rendering."""
 	self.game.read_game_information(packet, self.get_rigid_body_tick(), self.get_field_info())
 	b = Ball(self.game.ball)
 	ball_predictions = []
@@ -19,7 +19,7 @@
 			loc = Vector3(float(omegalul[0]), float(omegalul[1]), float(omegalul[2]))
 			#self.renderer.draw_rect_3d(loc, 5, 5, True, render_color)
 
-	"""Old, very bad powerslide"""
+"""Old, very bad powerslide"""
 	"""It tries to determine at the beginning of powersliding how long we're planning to powerslide."""
 	"""This is bad because after the timer is up it will keep re-activating itself, so in the end the powersliding, vel_fac, yaw_fac values are completely useless and all that matters is what's in the if() requirements."""
 	if(self.powersliding):
@@ -35,7 +35,7 @@
 		self.powerslide_until = time.time() + self.drift_vel_fac + self.drift_yaw_fac	# Powerslide for some time depending on velocity and angle.
 		controller.handbrake = True
 
-	"""from Botimus or PythonExampleBot, I don't think I need it."""
+"""from Botimus or PythonExampleBot, I don't think I need it."""
 	def get_car_facing_vector(car):
 		pitch = float(car.physics.rotation.pitch)
 		yaw = float(car.physics.rotation.yaw)
@@ -45,7 +45,7 @@
 
 		return Vector2(facing_x, facing_y)
 
-	"""Vector2 from Botimus or PythonExampleBot or whatever"""
+"""Vector2 from Botimus or PythonExampleBot or whatever"""
 	class Vector2:
 		def __init__(self, x=0, y=0):
 			self.x = float(x)
@@ -72,3 +72,29 @@
 					correction -= 2 * math.pi
 
 			return correction
+
+"""Written for my Debug.py, but a bad idea."""
+	def field(car, color=None):
+		"""Draw a rectangle represending the field in 2D."""
+
+		r = car.renderer
+		color = ensure_color(r, color)
+		field = MyVec3(8200, 10280, 2050)
+		bottom_left = 	MyVec3(-field.x,  field.y, 0) / local_ratio
+		bottom_right = 	MyVec3( field.x,  field.y, 0) / local_ratio
+		top_left = 		MyVec3(-field.x, -field.y, 0) / local_ratio
+		top_right = 	MyVec3( field.x, -field.y, 0) / local_ratio
+		
+		"""Local coords, don't do this :'D"""
+		# line_2d_local(car, bottom_left, bottom_right, color)
+		# line_2d_local(car, bottom_right, top_right, color)
+		# line_2d_local(car, top_right, top_left, color)
+		# line_2d_local(car, top_left, bottom_left, color)
+		
+		"""Global coords with a backdrop, just as useless :)"""
+		# rect_2d_from_center(car, 0, 0, width=int(field.x/local_ratio*2), height=int(field.y/local_ratio*2), color=r.gray())
+		
+		# line_2d_from_center(car, bottom_left.x, 	bottom_left.y, 	bottom_right.x, bottom_right.y, color)
+		# line_2d_from_center(car, bottom_right.x, 	bottom_right.y, top_right.x, 	top_right.y, 	color)
+		# line_2d_from_center(car, top_right.x, 		top_right.y, 	top_left.x, 	top_left.y, 	color)
+		# line_2d_from_center(car, top_left.x, 		top_left.y, 	bottom_left.x, 	bottom_left.y, 	color)

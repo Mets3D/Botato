@@ -1,7 +1,7 @@
 import math
 
 # This isn't my fault. I can't be arsed to juggle Vec3 types on the fly between 3 types and another 8 that I might encounter in the future. 
-# I'm merging them all into this, whether you like it or not.
+# I'm merging them all into this, whether you like it or not. TODO: for some reason game_state_util functions ignore them when I pass MyVec3's into them... No error, just doesn't work :/ wtf.
 from rlbot.utils.structures.game_data_struct import Vector3 as gds_Vec3
 from rlbot.utils.game_state_util import Vector3 as gsu_Vec3
 from rlbot.utils.game_state_util import Rotator as gsu_rot
@@ -65,6 +65,9 @@ class MyVec3(vec3):
 	def normalized(self):
 		return MyVec3(self.x,self.y,self.z).normalize()
 
+	def dot(self, other):
+		return self.x*other.x + self.y*other.y +self.z+other.z
+
 	def angle_to(self, other):
 		return math.degrees(math.acos((self * other) / (self.size * other.size)))
 
@@ -125,11 +128,13 @@ class MyVec3(vec3):
 		return MyVec3(x,y,z)
 
 	def __eq__(self, other):
-		other = MyVec3(other)
+		try:
+			other = MyVec3(other)
+		except:
+			return False
 		return self.x == other.x and self.y == other.y and self.z == other.z
 
 	def __ne__(self, other):
-		other = MyVec3(other)
 		return not self == other
 
 	def to_rotation(self):
@@ -153,7 +158,6 @@ class MyVec3(vec3):
 		my_gsu_vec.convert_to_flat(builder)
 		# Re-make self based on result
 		self = MyVec3(my_gsu_vec)
-
 
 def vec3_to_rotator(vec3):
 	return Rotator(math.atan2(vec3.z, math.sqrt((vec3.x * vec3.x) + (vec3.y * vec3.y))),

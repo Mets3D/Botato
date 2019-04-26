@@ -1,5 +1,3 @@
-# can I skip staging?
-
 """Useful secret links
 	RLBot
 		https://github.com/RLBot/RLBot/wiki/Useful-Game-Values
@@ -21,8 +19,8 @@
 
 """TODO
 	Next features to implement: Improving fundamental movement.
+		- Make dodge distance threshold a function of total speed to speed toward target ratio times distance from target.
 		- Make dodge delay dependent on current speed towards target* to minimize that delay while avoiding scraping the nose on the floor.
-		- Probably rework the powerslide conditions using local coords
 		- Teach him to arrive at the destination in a set amount of time rather than as fast as possible(which will be useful for timing all kinds of shots, when I get there)
 	Features after that:
 		- Research other bots again, re-think our design in case we find any that seem better.
@@ -400,10 +398,10 @@ class Strat_MoveToRandomPoint(Strategy):
 		if(car_target_dist < 200 or cls.target.x==0):
 			arena = vec3(8200*.5, 10280*.6, 2050*0.1)
 			random_point = vec3( (random.random()-0.5) * arena.x, (random.random()-0.5) * arena.y, 100 )
-			#goal1 = vec3( 1, arena.y*0.4, 17)
-			#random_point = vec3( 1, -arena.y*0.4, 17)
-			#if(random.random()>0.5):
-			#	random_point=goal1
+			# goal1 = vec3( 1, arena.y*0.4, 17)
+			# random_point = vec3( 1, -arena.y*0.4, 17)
+			# if(random.random()>0.5):
+			# 	random_point=goal1
 			cls.target = random_point
 		else:
 			pass
@@ -427,11 +425,11 @@ class Botato(BaseAgent):
 	def __init__(self, name, team, index):
 		super().__init__(name, team, index)
 
-		# RLBot set-up
+		# RLBot
 		self.controller = SimpleControllerState()
 		self.ball_prediction = None
 
-		# RLUtilities set-up
+		# RLUtilities
 		Game.set_mode("soccar")
 		self.game = Game(index, team)
 
@@ -446,17 +444,22 @@ class Botato(BaseAgent):
 		
 		self.active_strategy = Strat_Kickoff
 
-		# Maths
+		self.time_old = 0
+		self.dt = 0
+		self.last_self = None			# For storing the previous tick packet. Useful for getting deltas.
+
 		self.yaw_car_to_target = 0
 		self.distance_from_target = 0
-		
-		self.last_self = None			# For storing the previous tick packet. Useful for getting deltas.
 
 		# Dodging
 		self.jumped = False
 		self.dodged = False
-		self.last_jump = 0
+		self.last_jump = 0				# Time of our last jump (Time of our last dodge is not stored currently)
 
+		# Powersliding
+		self.powersliding = False
+		self.powersliding_since = 0		# Time when we started powersliding. Used to determine if we should drift.
+		
 		# Car values
 		self.location = vec3(0, 0, 0)
 		self.rotation = Rotator()
@@ -525,31 +528,18 @@ class Botato(BaseAgent):
 			self.last_self = copy.copy(self)
 			return self.controller
 
-	# ControllerState for moving on the floor. Not necessarily ideal for hitting the ball!	
-	# TODO: assuming we can't make a single universal function for getting to any point on the map, consider making more of these(call them ControllerStates or whatever, maybe ask for advice in the discord when we get to that point.)
 	def cs_on_ground(self, target, controller):
-			""" General powersliding, forward dodging, wavedashing, off-the wall recovery could be implemented here, all on the condition that the target is far enough away...? """
-				# ^ The only problem I see with that idea is what if our targets are switching too quickly, and they never really end up being very far away, in particular because we will always be targetting a nearby boost."""
-				# This once again just comes down to our special strategies of picking up boost and bumping though.
-				# So what I could do is treat their target differently than regular strategies' targets. Those would be main targets, while boost and bump would be "sub-targets".
-				# So when I check whether I should dodge, wavedash, jump off the wall, I would take into consideration the main target more so than the sub-target.
-				
-				# There should be a set_target() function(or just make it a @property in Strategy) which makes sure that the target doesn't go out of bounds.
-				# Sub-Targets should be added to avoid goalposts. With that in mind, I might be changing the boost grabbing behaviour from a Strategy to something that always runs, that adds these sub-targets, when needed.
-				# We could also use this sub-target system to avoid the ball maybe, but that might be done better on a per-strategy basis. Otherwise every time we avoid the ball we would probably end up powersliding and losing all of our momentum.
-				# However, in situations where we're confident that Botato will not turn around, we could definitely avoid the ball using a sub-target.
-				# Keep in mind that sometimes picking up 100 boost should calculate to be beneficial enough to go FAR out of the way of the main target.
-
-
-				# Okay, cool story, for now, let's focus on some basic powersliding.
-				# Or perhaps before that, I should focus on slowing down if needed, or taking a greater angle when needed.
-				# No, let's do powersliding first.
+			"""ControllerState for moving on the floor. Not necessarily ideal for hitting the ball!"""
+			# TODO: Wavedashing & Half-Flipping? Need to figure out how I want to structure the concept of "Maneuvers".
 		# Target Math
-			self.yaw_car_to_target = get_yaw_relative(self.location.x, self.location.y, target.x, target.y, self.rotation.yaw)	# This gives better results than local yaw difference, particularly when on the wall :P
+			# Yaw
+			self.yaw_car_to_target = get_yaw_relative(self.location.x, self.location.y, target.x, target.y, self.rotation.yaw)	# This gives better results than local coords yaw difference, particularly when on the wall.
+			delta_yaw = abs((self.yaw_car_to_target - self.last_self.yaw_car_to_target))*(1/self.dt)							# How fast we are approaching the correct alignment, in degrees/sec
+			time_to_aligned = self.yaw_car_to_target / (delta_yaw+0.00000001)													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
+			
+			# Speed toward target
 			self.distance_from_target = (self.location - target).length
-			target_local = local_coords(self, target)	# Currently unused.
-			velocity_local = local_coords(self, self.velocity)
-			velocity_at_car = (self.location + self.velocity/120)		# per tick, rather than per second. Feels like it shouldn't matter, but I guess it does.
+			velocity_at_car = (self.location + self.velocity/120)		# per tick, rather than per second. Feels like it shouldn't matter, but I guess it does. TODO still not really sure if this maths is correct, but I'm pretty sure it does what I wanted it to.
 			distance_now = distance(self.location, target)
 			distance_next = distance(velocity_at_car, target)
 			speed_toward_target = (distance_now.size - distance_next.size) * 120
@@ -558,38 +548,28 @@ class Botato(BaseAgent):
 		# Powersliding
 
 			# some crappy debug display for delta yaw. idk if this or the thing it's debugging is even useful.
-			last_yaw = self.last_self.yaw_car_to_target
-			yaw_delta_deg = (self.yaw_car_to_target - last_yaw)
-			if(self.debug_controls):
-				color = self.renderer.lime() if (abs(yaw_delta_deg) < 0.1) and (abs(controller.steer) < 0.1) else self.renderer.red()
-				Debug.text_2d(self, 20, 610, "deltaYaw: ", color=color)
-				self.renderer.draw_rect_2d(200+yaw_delta_deg*10, 620, 20, 20, True, color)
-
-			# When to powerslide? Keep in mind, this ControllerState is purely responsible for getting from point A to point B the quickest. No other use cases for powersliding should be considered(hook shots, dribbling, etc).
 			
-			# Regardless of distance to target
-			# When we are facing away from the target (ie our yaw distance is high)
-			# When we aren't about to be facing the target (ie. our angular velocity towards decreasing our yaw difference is pretty high)
+			# When to powerslide?
 
-			# This works surprisingly well without boosting and dodging. 
-			# TODO: considering car speed will probably be necessary once we start boosting and dodging. It should probably be a multiplier on the av_to_yaw_limit, or that whole thing should be changed to only use car speed instead of angular velocity. Not sure.
-			# Distance from ball could be another one, but maybe not?
-			minimum_yaw_difference = 35
-			av_to_yaw_ratio = (self.av.z) / self.yaw_car_to_target
-			
-			# Set the ratio to 0 if yaw difference is pretty low, since at that point we shouldn't be powersliding anyways.
-			if(abs(self.yaw_car_to_target) < 15 ):
-				av_to_yaw_ratio = 0
-
-			av_to_yaw_limit = 150	# If the angular velocity to yaw ratio falls below this, we should stop powersliding. TODO: If this is 100 it seems pretty good, but going around the target in circles can happen.
-			minimum_speed = 300		# Don't want to be powersliding if the ball is basically standing still TODO: I'm not sure if that's true. Either way, this check seems pretty redundant.
-			if(abs(av_to_yaw_ratio) < av_to_yaw_limit
-				and abs(self.yaw_car_to_target) > minimum_yaw_difference
-				and self.location.z < 50
-				and self.velocity.length > minimum_speed ):
+			# Regardless of distance to target - TODO yeah I'm not so sure if that's right.
+			yaw_threshold = 90				# We want to powerslide if we're facing more than this many degrees away from target.
+			base_slide_dur = 0.3			# We want to powerslide for at least this long, if:
+			base_yaw_threshold = 25		# We are facing away more than this many degrees.
+			time_threshold = 1				# We should keep powersliding if the estimated time to alignment based on our yaw delta is greater than this many seconds.
+			if(
+				(abs(self.yaw_car_to_target) > yaw_threshold	# We're facing this many degrees away from the target.
+				and self.location.z < 50						# We aren't on a wall.
+				or
+				(abs(self.yaw_car_to_target) > base_yaw_threshold and time.time() - self.powersliding_since < base_slide_dur)	# Always powerslide for at least some time for even a small angle.
+				or time_to_aligned > time_threshold):
 				self.controller.handbrake = True
+
+				if(not self.powersliding):
+					self.powersliding = True
+					self.powersliding_since = time.time()
 			else:
 				self.controller.handbrake = False
+				self.powersliding=False
 
 		# Throttle
 			# TODO: powersliding has better results in certain situations with throttle=0 or throttle=1. Figure out when.
@@ -604,13 +584,18 @@ class Botato(BaseAgent):
 		# Steering
 			turn_power = 20	# Increasing makes it align faster but be more wobbly, decreasing makes it less wobbly but align slower. This could possibly be improved but it's pretty good as is.
 			controller.steer = clamp(self.yaw_car_to_target/turn_power, -1, 1)
+
+			# Drifting
 			# If we are powersliding but we are aligned with our target, reverse steering, to drift!. TODO: not sure if this is actually beneficial, probably not.
-			print(self.speed / speed_toward_target)
-			if(	False and self.controller.handbrake 
-				and abs(self.yaw_car_to_target) < 90 
-				and abs(velocity_local.x) > 500):
+			drifting_timer = 0.6	# Time spent powersliding that has to pass until we switch over to drifting.
+			if(	False and
+				self.controller.handbrake 
+				#and abs(self.yaw_car_to_target) < 90 
+				#and abs(self.speed / speed_toward_target) > 1.1
+				and self.controller.steer==1
+				and time.time() - self.powersliding_since > drifting_timer):
 				self.controller.steer = -self.controller.steer
-				#print("Drifting "+str(time.time()))
+				#print("drifting "+str(time.time()))
 		
 		# Dodging
 			# TODO: Implement half flipping. Maybe make it a separate "maneuver".
@@ -618,9 +603,9 @@ class Botato(BaseAgent):
 			# When we are a fair distance from the target OR TODO: when it's okay to overshoot the target (TODO - this requires knowing our next target, which will come later.)
 
 			dodge_steering_threshold = 0.51
-			speed_toward_target_threshold = 1300
+			speed_toward_target_threshold = 1300		# TODO this should be changed to check that a *significant amount*(90%?) of our total speed is in the direction of the target. The higher that %, the slower but more precise our dodges will be. We could also dynamically increase that precision based on distance from target. The closer we are, the more dangerous an imprecise dodge is.
 			
-			dodge_delay = 0.15 - (2300-self.speed)/20000		# Time in s between jumping and flipping. If this value is too low, it causes Botato to scrape his nose on the floor. If this value is too high, Botato will dodge slower than optimal. The value has to be higher when our speed is lower.  This calculates to 0.13 when our speed is 1300, and to 0.18 when our speed is 2300.
+			dodge_delay = 0.17 - (2300-self.speed)/20000		# Time in s between jumping and flipping. If this value is too low, it causes Botato to scrape his nose on the floor. If this value is too high, Botato will dodge slower than optimal. The value has to be higher when our speed is lower.  This calculates to 0.13 when our speed is 1300, and to 0.18 when our speed is 2300.
 			wheel_contact_delay = 0.3							# Time in s that has to pass after landing before we should dodge again. This will probably be universal to all controller states, but it could be a factor of how hard we landed(Z velocity) when we last landed.
 			
 			if(self.jumped):
@@ -652,7 +637,8 @@ class Botato(BaseAgent):
 					self.dodged=False
 			
 			# Step 1 - Jump
-			elif( 	self.distance_from_target > 1500 								# We are far enough away from the target
+			elif( 	 
+					self.distance_from_target > 1500 								# We are far enough away from the target TODO: this value needs to be dynamic, based on speed. (more speed, higher threshold) but it can have an allowance for overshooting, which could be a parameter.
 					and self.location.z < 18 										# We are on the floor
 					and self.wheel_contact 											# We are touching the floor (slightly redundant, yes)
 					and time.time() - self.last_wheel_contact > wheel_contact_delay # We haven't just landed (Trying to jump directly after landing will result in disaster(except when Wavedashing).
@@ -696,17 +682,10 @@ class Botato(BaseAgent):
 		
 		if(str(my_raycast.start) == str(ray_end)):
 			# If the raycast didn't intersect with anything, return the target location.
-			# TODO might be safer to return None instead. We'll see.
 			return vec3(loc1)
 		if(debug or self.debug_target):
 			self.renderer.draw_rect_3d(my_raycast.start, 20, 20, True, self.renderer.lime())
-			debug_line(self, my_raycast.start, loc1, color=self.renderer.red())
-			debug_line(self, my_raycast.start, loc2, color=self.renderer.lime())
+			Debug.line_2d_3d(self, my_raycast.start, loc1, color=self.renderer.red(), draw_2d=False)
+			Debug.line_2d_3d(self, my_raycast.start, loc2, color=self.renderer.lime(), draw_2d=False)
 
 		return vec3(my_raycast.start)
-
-def debug_line(car, loc1, loc2, color=None, thickness=3):
-	renderer = car.renderer
-	if(not color):
-		color=renderer.white()
-	renderer.draw_line_3d(loc1, loc2, color)

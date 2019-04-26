@@ -38,6 +38,9 @@ def preprocess(self, packet: GameTickPacket):
 	if(self.wheel_contact != self.wheel_contact_old):
 		self.wheel_contact_old = self.wheel_contact
 		self.last_wheel_contact = time.time()
+	
+	self.dt = time.time() - self.time_old
+	self.time_old = time.time()
 
 	# Car Math
 	self.distance_from_ball = (self.location - ball.location).length

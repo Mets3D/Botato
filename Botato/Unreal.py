@@ -159,11 +159,6 @@ class MyVec3(vec3):
 		# Re-make self based on result
 		self = MyVec3(my_gsu_vec)
 
-def vec3_to_rotator(vec3):
-	return Rotator(math.atan2(vec3.z, math.sqrt((vec3.x * vec3.x) + (vec3.y * vec3.y))),
-						math.atan2(vec3.y, vec3.x),
-						0.0)
-
 class Rotator:
 	def __init__(self, pitch=0.0, yaw=0.0, roll=0.0):
 		if(isinstance(pitch, gsu_rot)):
@@ -222,7 +217,7 @@ class Rotator:
 
 		return matrix
 
-	# game_state_util.Vector3
+	# game_state_util.Rotator
 	def convert_to_flat(self, builder):
 		# Create a game_state_util.Vector3
 		my_gsu_rot = gsu_rot(self.pitch, self.yaw, self.roll)

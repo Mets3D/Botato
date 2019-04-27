@@ -24,7 +24,7 @@
 		- Teach him to arrive at the destination in a set amount of time rather than as fast as possible(which will be useful for timing all kinds of shots, when I get there)
 	Features after that:
 		- Research other bots again, re-think our design in case we find any that seem better.
-		- Sub-Target System
+		- Sub-Target System (I think each strategy should be responsible for finding a path to their target while placing sub-targets for optimal boost pads and optimal angle, timing and speed of arrival at the target...)
 		- Picking up boosts
 		- Navigating on the wall(new ControllerState, switching to that when needed) (Also need a new testing Strategy, PickLocationOnWall)
 		- Code refactoring (moving shit to new files)
@@ -455,11 +455,14 @@ class Botato(BaseAgent):
 		self.jumped = False
 		self.dodged = False
 		self.last_jump = 0				# Time of our last jump (Time of our last dodge is not stored currently)
+		#temp
+		self.last_jump_loc = MyVec3(0,0,0)
 
 		# Powersliding
 		self.powersliding = False
 		self.powersliding_since = 0		# Time when we started powersliding. Used to determine if we should drift.
-		
+		self.last_powerslide_ended = 0
+
 		# Car values
 		self.location = vec3(0, 0, 0)
 		self.rotation = Rotator()
@@ -480,7 +483,7 @@ class Botato(BaseAgent):
 			Preprocess.preprocess(self, packet)		# Cleaning up values
 			self.renderer.begin_rendering()
 			self.ball_prediction = self.get_ball_prediction_struct()
-		
+			print("")
 		# Choosing Strategy
 			for s in strategies:
 				s.evaluate(self, self.teammates, self.opponents, ball, self.boost_pads, self.active_strategy)
@@ -534,8 +537,6 @@ class Botato(BaseAgent):
 		# Target Math
 			# Yaw
 			self.yaw_car_to_target = get_yaw_relative(self.location.x, self.location.y, target.x, target.y, self.rotation.yaw)	# This gives better results than local coords yaw difference, particularly when on the wall.
-			delta_yaw = abs((self.yaw_car_to_target - self.last_self.yaw_car_to_target))*(1/self.dt)							# How fast we are approaching the correct alignment, in degrees/sec
-			time_to_aligned = self.yaw_car_to_target / (delta_yaw+0.00000001)													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
 			
 			# Speed toward target
 			self.distance_from_target = (self.location - target).length
@@ -545,31 +546,23 @@ class Botato(BaseAgent):
 			speed_toward_target = (distance_now.size - distance_next.size) * 120
 			Debug.text_2d(self, 10, 100, "Speed toward target: " + str(speed_toward_target))
 		
-		# Powersliding
+		# Powersliding (TODOOOOOO) - note to future self: the reason we split them up into maneuvers now is because the if statements below have to happen sort of for both of them, so that the two powersliding logics don't mess with each other. Still need to move the variables they need into their classes, and replace "self" with "car" a bunch of times.
+			powerslide2 = Powerslide2.get_output(self, self.active_strategy.target)
 
-			# some crappy debug display for delta yaw. idk if this or the thing it's debugging is even useful.
-			
-			# When to powerslide?
-
-			# Regardless of distance to target - TODO yeah I'm not so sure if that's right.
-			yaw_threshold = 90				# We want to powerslide if we're facing more than this many degrees away from target.
-			base_slide_dur = 0.3			# We want to powerslide for at least this long, if:
-			base_yaw_threshold = 25		# We are facing away more than this many degrees.
-			time_threshold = 1				# We should keep powersliding if the estimated time to alignment based on our yaw delta is greater than this many seconds.
-			if(
-				(abs(self.yaw_car_to_target) > yaw_threshold	# We're facing this many degrees away from the target.
-				and self.location.z < 50						# We aren't on a wall.
-				or
-				(abs(self.yaw_car_to_target) > base_yaw_threshold and time.time() - self.powersliding_since < base_slide_dur)	# Always powerslide for at least some time for even a small angle.
-				or time_to_aligned > time_threshold):
-				self.controller.handbrake = True
-
+			self.controller.handbrake = powerslide2.handbrake
+			if(self.controller.handbrake):	# TODO: This is only necessary because we reset out controller during preprocessing. I don't know if that's really necessary, or a good idea.
 				if(not self.powersliding):
 					self.powersliding = True
-					self.powersliding_since = time.time()
+			else:
+				self.powersliding=False
+
+			"""if(powerslide_big.handbrake or powerslide_small.handbrake and not self.powersliding):
+				self.controller.handbrake = True
+				self.powersliding = True
 			else:
 				self.controller.handbrake = False
 				self.powersliding=False
+			"""
 
 		# Throttle
 			# TODO: powersliding has better results in certain situations with throttle=0 or throttle=1. Figure out when.
@@ -603,61 +596,90 @@ class Botato(BaseAgent):
 			# When we are a fair distance from the target OR TODO: when it's okay to overshoot the target (TODO - this requires knowing our next target, which will come later.)
 
 			dodge_steering_threshold = 0.51
-			speed_toward_target_threshold = 1300		# TODO this should be changed to check that a *significant amount*(90%?) of our total speed is in the direction of the target. The higher that %, the slower but more precise our dodges will be. We could also dynamically increase that precision based on distance from target. The closer we are, the more dangerous an imprecise dodge is.
-			
-			dodge_delay = 0.17 - (2300-self.speed)/20000		# Time in s between jumping and flipping. If this value is too low, it causes Botato to scrape his nose on the floor. If this value is too high, Botato will dodge slower than optimal. The value has to be higher when our speed is lower.  This calculates to 0.13 when our speed is 1300, and to 0.18 when our speed is 2300.
+			dodge_speed_threshold = 1000
+			speed_toward_target_ratio = speed_toward_target / self.speed
+			speed_toward_target_ratio_threshold = 0.97
+			dodge_duration = 1.3	# Rough expected duration of a dodge.
+			dodge_distance = min(self.speed+500, 2299) * dodge_duration		# Expected dodge distance based on our current speed. (Dodging adds 500 to our speed)
+
+			dodge_delay = 0.18 - (2300-self.speed)/20000		# Time in s between jumping and flipping. If this value is too low, it causes Botato to scrape his nose on the floor. If this value is too high, Botato will dodge slower than optimal. The value has to be higher when our speed is lower.  This calculates to 0.13 when our speed is 1300, and to 0.18 when our speed is 2300.
 			wheel_contact_delay = 0.3							# Time in s that has to pass after landing before we should dodge again. This will probably be universal to all controller states, but it could be a factor of how hard we landed(Z velocity) when we last landed.
 			
+			overshoot_threshold = 500	# We're allowed to overshoot the target by this distance. TODO: parameterize
+			
+			local_target_unit_vec = local_coords(self, self.active_strategy.target).normalized
+			
 			if(self.jumped):
-				# Step 2 - Tilt forward
+				# Step 2 - Tilt & wait for dodge delay.
 				if( (time.time() - self.last_jump) <= dodge_delay):	# It's not time to dodge yet.
 					controller.pitch = -1
+					#controller.roll = local_target_unit_vec.y	# Try to dodge roughly towards target. TODO: This is not the best.
+						
 					controller.jump = True	# "Hold" the jump key
 				
 				# Step 2.5 - Release the jump key just before the dodge.
-				if( dodge_delay >= time.time() - self.last_jump >= dodge_delay-0.03		# We're 0.03s away from the time when we should dodge. (TODO: I hope this doesn't break at low framerate :S)
+				if( dodge_delay >= time.time() - self.last_jump >= dodge_delay-0.1		# We're 0.03s away from the time when we should dodge. (TODO: I hope this doesn't break at low framerate :S)
 					and not self.dodged):
 					controller.jump = False
+					print("STEP TWOOOOOOOOOOOOOOOO.5")
 				
 				# Step 3 - Dodge, continue air steering in the target direction until we land. This runs ONCE!
 				elif(time.time() - self.last_jump >= dodge_delay		# It's time to dodge.
 					and not self.dodged):								# We haven't dodge yet.
 						controller.pitch = -1
-						controller.yaw = controller.steer	# TODO this should cause us to dodge towards our target, but I don't think it's working?
+						controller.roll = local_target_unit_vec.y	# Try to dodge roughly towards target. TODO: This is not the best.
+						controller.yaw=0
+						#print(local_target_unit_vec)
 						controller.jump = True
 						self.dodged = True
+						print("step 3 REEEEEEEEEEEEEEEEEEEEEEEEEEEE")
 				
 				# Step 4 - Before landing, continue steering toward the target.
 				elif(self.dodged 										# We already dodged
 					and not self.wheel_contact):						# But we haven't landed yet.
-						controller.yaw = controller.steer	# TODO this should cause us to dodge towards our target, but I don't think it's working?
+						controller.yaw = controller.steer
 					
 				elif(self.dodged and self.wheel_contact):
+					#print("dodge duration from jump to landing:")
+					print(time.time()-self.last_jump)
+					#print("dodge distance")
+					print((self.location - self.last_jump_loc).size) 
 					self.jumped=False
 					self.dodged=False
+					controller.jump=False
+					controller.roll=0
+					controller.yaw=0
 			
 			# Step 1 - Jump
-			elif( 	 
-					self.distance_from_target > 1500 								# We are far enough away from the target TODO: this value needs to be dynamic, based on speed. (more speed, higher threshold) but it can have an allowance for overshooting, which could be a parameter.
+			elif( 	
+					self.speed > dodge_speed_threshold								# We are going fast enough (Dodging while slow is not worth it)
+					and abs(self.av.z) < 1500										# We aren't spinning like crazy
+					and speed_toward_target_ratio > speed_toward_target_ratio_threshold # We are moving towards the target with most of our speed.
+					and self.yaw_car_to_target < 40									# We are more or less facing the target.
+					and self.distance_from_target > 1500 							# We are far enough away from the target TODO: this value needs to be dynamic, based on speed. (more speed, higher threshold) but it can have an allowance for overshooting, which could be a parameter.
 					and self.location.z < 18 										# We are on the floor
 					and self.wheel_contact 											# We are touching the floor (slightly redundant, yes)
-					and time.time() - self.last_wheel_contact > wheel_contact_delay # We haven't just landed (Trying to jump directly after landing will result in disaster(except when Wavedashing).
+					and time.time() - self.last_wheel_contact > wheel_contact_delay # We haven't just landed (Trying to jump directly after landing will result in disaster, except after Wavedashing).
 					and abs(controller.steer) < dodge_steering_threshold			# We aren't steering very hard
 					and controller.handbrake == False								# We aren't powersliding
-					and speed_toward_target > speed_toward_target_threshold			# We have enough speed in the direction of the target
 				): 
+					#print("speed: " + str(self.speed))
+					#print("ratio: " + str(speed_toward_target_ratio))
+					#print("expected dodge distance: " )
+					#print(dodge_distance)
+					self.last_jump_loc = self.location
 					controller.jump = True
 					controller.pitch = -1	# (Yes, this line only matters for the 1st tick.)
 					self.jumped = True
 					self.last_jump = time.time()
 					
 		# Boosting
-			yaw_limit = 40
+			yaw_limit = 10
 			max_speed = 2300
 			z_limit = 100
 			if(	 													# When do we want to boost?
 				controller.handbrake == False						# We are not powersliding (TODO: We should actually boost in the beginning of powersliding, or maybe even the whole way through.)
-				and self.yaw_car_to_target < yaw_limit				# We are reasonably aligned with our target
+				and abs(self.yaw_car_to_target) < yaw_limit				# We are reasonably aligned with our target
 				and self.speed < max_speed 							# We are not going very fast (TODO: In the future, when our speed is lower than desired speed)
 				and self.location.z < z_limit 						# We are not on a wall or goalpost (for now) (delete this when facing towards target is implemented, then just add a roll check ro make sure we aren't upside down or something...)
 				and (0 > self.rotation.pitch * RAD_TO_DEG > -50)	# We are not facing the sky or ground (possibly redundant)
@@ -689,3 +711,62 @@ class Botato(BaseAgent):
 			Debug.line_2d_3d(self, my_raycast.start, loc2, color=self.renderer.lime(), draw_2d=False)
 
 		return vec3(my_raycast.start)
+
+# How is a ControllerState different from a Maneuver? A controller state can execute a Maneuver and then choose to ignore part of its output. Doing this, it can combine different inputs from different maneuvers, among other things.
+
+class Maneuver():
+	"""Base class for maneuvers. Maneuvers are used by ControllerStates to get to a point in a specific way."""
+	controller = SimpleControllerState()
+
+	@classmethod
+	def get_output(cls, car, target) -> SimpleControllerState:
+		return cls.controller
+
+class Powerslide1(Maneuver):
+	"""This tries to stop powersliding once the yaw threshold is hit. Doesn't work very well, over and under-slides are common, adjusting the threshold improves one but worsens the other."""
+	yaw_threshold = 90					# We want to powerslide if we're facing more than this many degrees away from target.
+	
+	@classmethod
+	def get_output(cls, car, target) -> SimpleControllerState:
+		delta_yaw = abs((car.yaw_car_to_target - car.last_self.yaw_car_to_target))*(1/car.dt)							# How fast we are approaching the correct alignment, in degrees/sec
+		time_to_aligned = car.yaw_car_to_target / (delta_yaw+0.00000001)													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
+		time_threshold = 1				# We should keep powersliding if the estimated time to alignment based on delta_Yaw is greater than this many seconds.
+		if(
+			(abs(car.yaw_car_to_target) > cls.yaw_threshold		# We're facing far away from the target.
+			or time_to_aligned > time_threshold)				# Or the estimated time to alignment is high.
+			and car.location.z < 50								# We aren't on a wall.
+			and car.wheel_contact								# We are touching the ground.
+		):
+			cls.controller.handbrake = True
+		else:
+			cls.controller.handbrake = False
+
+		return cls.controller
+
+class Powerslide2(Maneuver):
+	"""This maneuver tries to determine at the beginning of the powerslide how long the powerslide should last. (WIP: Duration is currently a constant.)"""
+	powerslide_until = -1
+	last_ended = -1
+
+	@classmethod
+	def get_output(cls, car, target) -> SimpleControllerState:
+		yaw_threshold = 25			# Yaw to target has to be greater than this.
+		slide_duration = 0.5		# Max slide duration.
+		time_gap = 0.5				# Time that has to pass before this maneuver can be re-activated.
+		if(
+			Powerslide1.yaw_threshold > abs(car.yaw_car_to_target) > yaw_threshold
+			and (time.time() < cls.powerslide_until
+			or time.time() > cls.powerslide_until + time_gap)
+			and car.location.z < 50								# We aren't on a wall.
+			and car.wheel_contact								# We are touching the ground.
+		):
+			cls.controller.handbrake = True
+			if( not car.powersliding ):	# If We just started powersliding
+				# Activate this maneuver
+				print("started small powerslide")
+				cls.powerslide_until = time.time() + slide_duration
+		elif(car.powersliding):
+			# Deactivate this maneuver
+			#print("ended small powerslide")
+			cls.controller.handbrake=False
+		return cls.controller

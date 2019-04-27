@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "Botato"
+		},
+		{
+			"path": "D:\\rlbot\\rlutils\\rlutilities"
 		}
 	],
 	"settings": {}

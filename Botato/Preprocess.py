@@ -11,7 +11,7 @@ import time
 
 def preprocess(self, packet: GameTickPacket):
 
-	self.controller = SimpleControllerState()
+	#self.controller = SimpleControllerState()
 
 	# Ball
 	ball.location = MyVec3(packet.game_ball.physics.location)

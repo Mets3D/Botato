@@ -1,100 +1,3 @@
-"""Useful secret links
-	RLBot
-		https://github.com/RLBot/RLBot/wiki/Useful-Game-Values
-		https://github.com/RLBot/RLBot/wiki/Manipulating-Game-State
-		Related: Boost hitboxes: https://discordapp.com/channels/348658686962696195/348661571297214465/570062735673393173
-		https://github.com/samuelpmish/RLUtilities/tree/master/examples
-	
-	RLUtilities
-		https://github.com/RLBot/RLBotPythonExample/wiki/Input-and-Output-Data
-	
-	
-	Steering: https://www.youtube.com/watch?v=4Y7zG48uHRo
-	Dribbling? https://discordapp.com/channels/348658686962696195/348661571297214465/570369598134681600
-	Keyboard input https://discordapp.com/channels/348658686962696195/348658686962696196/570442556526034995
-	
-	Github tutorial: https://learngitbranching.js.org/
-	Where I left off in the book: https://git-scm.com/book/en/v2/Git-Basics-Viewing-the-Commit-History
-	"""
-
-"""TODO
-	Next features to implement: Improving fundamental movement.
-		- Make dodge distance threshold a function of total speed to speed toward target ratio times distance from target.
-		- Make dodge delay dependent on current speed towards target* to minimize that delay while avoiding scraping the nose on the floor.
-		- Teach him to arrive at the destination in a set amount of time rather than as fast as possible(which will be useful for timing all kinds of shots, when I get there)
-	Features after that:
-		- Research other bots again, re-think our design in case we find any that seem better.
-		- Sub-Target System (I think each strategy should be responsible for finding a path to their target while placing sub-targets for optimal boost pads and optimal angle, timing and speed of arrival at the target...)
-		- Picking up boosts
-		- Navigating on the wall(new ControllerState, switching to that when needed) (Also need a new testing Strategy, PickLocationOnWall)
-		- Code refactoring (moving shit to new files)
-	Features after that:
-		- Implement keyboard input and training, so we can set up scenarios for Botato to test his skills.
-		- Prediction, and an initial strategy (hit_ball_towards_net, without ball chasing)
-		-	Since we can't aerial yet, we'll have to time our approach so that we arrive at a reachable(!) point at the time when it lands there.
-	Features after that:
-		- More ControllerStates! Aerialing, dribbling, etc. The hit_ball_towards_net strategy should pick the best state.
-	Features after that:
-		- More Strategies, that evaluate() themselves correctly, and pick ControllerStates correctly. Remember, according to our current design, a Strategy is responsible for finding a target position and desired speed.
-	
-	Plan out some details on how the bot will work in the long term. Maybe watch this series: https://youtu.be/NjJzPoo16iQ?t=507
-		Look at some other bots again. Watch them fight each other, look at their code(even the C++ bots!) download some more bots that weren't included in the bot pack, etc.
-		
-		Will Strategies be able to affect controls directly, or will they just pick a target and a controller state?
-		Do I want to have multiple controller states? What kinds?
-		How will sub-targets work and how will I find them?
-		What is a list of those features that I want implemented that other bots have already done?
-		What is a list of features, if any, that I want implemented, that no one has done before, or not as well as I want to?
-		Will I be able to accomodate these features with my planned system?
-		How will prediction work?
-		In what order am I going to implement features? When will I start using prediction?
-	"""
-
-"""Learning?
-	Today I thought of a way to add some kind of "learning" to Botato.
-	Once we have multiple strategies, we could introduce weights on them that affect how easily that strategy is selected to be the active strategy. All strategies would start with a weight of 1 when a game starts.
-	Every time a strategy is switched, we would keep track of whether that strategy switched due to success or failure. Maybe we could even qualify the failure, eg. by picking that strategy, we got scored on.
-	Over the course of the game, the weights would adjust to pick higher success rate strategies.
-	This could be taken one step further by saving these results into a file, associated with the enemy's name, meaning Botato would remember what he learned about his opponent for future matches.
-	And yet another step further, by looking for patterns in that saved file. Say, if a strategy is unsuccessful against a lot of enemies, we can either try to improve that strategy, remove it, or assign another, hard-coded weight to it that is less than 1 (Although in the system I have in mind, this could simply be done by adjusting the evaluate() function.).
-	"""
-
-"""Strategy ideas:
-	(Pretty much all of these will rely on prediction)
-	Kickoff: Botato does a nutty wavedash kickoff. ControllerStates: simple_wavedash, cs_on_ground, shoot_ball
-	Defending: Botato is sitting in his goal, keeping himself aligned with where the ball is about to be. ControllerState: align_in_place
-	Challenging: Botato is driving towards the ball, then dodges into it. ControllerState: drive_toward_target
-	Saving: Botato is trying his bestest to hit the ball away from its current path. ControllerStates: drive_toward_target -> shoot_ball (TODO: in the future there could be many options for this one, eg. catching, aerialing, etc.)
-	Rotating: Botato is going back towards his goal, picking up as much boost as possible. ControllerStates: drive_toward_target
-	Shooting: Botato is going towards the ball, and then takes a shot. ControllerStates: drive_toward_target, shoot_ball
-	Powershot: Reach a target location at a certain angle, a certain time, with a certain speed, and either dodge into it or don't depending on how much power we need and how much we don't mind dodging. I guess Powershot could be broken up into a few different strategies.
-		This would be very useful, but does our system lend itself to it? Time and speed sound doable, but angle? The Strategy would have to find the target location that will later result in the car being at the desired angle. That's also doable.
-		But both at the same time? I guess this means Strategy will not only be responsible for target location, but also desired speed to get there. The angle of approach would have to be achieved by moving the target correctly. So, in the end, this ControllerState would just be cs_on_ground with a target speed parameter.
-	"""
-
-"""Maneuver ideas
-	In the future, controllerstates could be broken down into maneuvers. For example, cs_on_ground could be broken down into Simple_Steer, Powerslide_Until_Aligned, Dodge_Toward_Target. 
-	This would allow controllerstates to share code nicely. We should also look into how RLU Maneuvers work. Is it the same idea? Or are those Maneuvers really just what we'd consider ControllerStates, or even entire Strategies?
-	Note that boosting behaviour might end up being universal, I'm not sure yet.  
-	"""
-
-"""ControllerState ideas
-	For now, we're working on the controllerstate cs_on_ground which will be responsible for getting us from point A to point B as fast as possible.
-	The ideas listed below might be more fitting for Maneuvers, who knows.
-	drive_toward_target should take an optional desired_speed parameter.
-
-	jump_toward_target: Reach target by jumping and double-jumping or flipping. Can be used for both saving and shooting, hopefully.
-	align_in_place: Align ourself with a target, probably starting with a powerslide), and try to keep ourself aligned by driving forwards and backwards. Used for defending/preparing for an enemy shot.
-	
-	
-	Far future ideas...
-	AerialAim: Before hitting a ball in the air(even if just double jumping) try to align our car so that the ball will bounce in a desired direction.
-	
-	Detect when the ball is about to be scored on our net in the very top of it, and if the conditions are right, drive up the back of the goal for the save!
-	Instead of not dodging towards our target when the target is too close, correct our rotation during the dodge(towards the very end), towards our next target.
-	reverse-half-flip when going back to our goal to defend
-	"""
-
 # Python built-ins
 import math, colorsys, random, copy
 
@@ -116,61 +19,6 @@ from rlbot.agents.human.controller_input import controller as user
 
 # RLUtilities
 from rlutilities.simulation import Ball, Field, Game, ray
-
-"""Implicit Strategy Selection framework"""
-	# Note from the future: I'm not too confident anymore that this is a great idea, but I might still try for it. Truth is, it's a very long time until we'll have multiple strategies that will be close to each other in viability in any situation.
-
-	# Each Strategy is a class that can evaluate() its own viability and execute() to find where it wants the car to go.
-	# TODO Also choose *how* it wants the car to go there, how much boost it needs, etc? Not sure about this yet.
-	# The Active Strategy will always be the one with the highest viability.
-	# A strategy does not explicitly know when it should stop being the active strategy.
-	# Instead, its viability will go down, and *hopefully* it will stop being the active strategy.
-	# The benefits of this system are not 100% clear to me right now, but I like it, so I will pursue it for now.
-	# If it doesn't work out, it should be easy to change it to a regular explicit if-this-then-that strategy selection system.
-
-	# Notes:
-	# The more specific our strategies are, the better. The goal is NOT to minimze the number of strategies, but to allow Botato to have a confident strategy in as many situations as possible.
-
-"""Target and Sub-Target system"""
-	# Each Strategy will find a target location where it currently wants the car to go. In the current system there is always only 1 target at a time, but that could change in the future if needed.
-	# Sub-targets are like targets except they are aware of the next target, whether that target is the main target or another sub-target.
-	# Sub-targets are used for:
-		# Picking up boost
-		# Avoiding goalpost
-		# Bumping/demoing enemies
-	# Main benefit: the approach to the sub-target can be affected by future targets before it. 
-	# Ex: We're grabbing our corner boost. Next target is to go into the goal and defend. We can start turning and powersliding *before* we hit the corner boost sub-target, to get to the goal faster.
-		# This might be the same as simply putting the target closer towards the car, rather than directly on the boost. But still, you have to put it closer towards the car depending on where the next target is, so that's the same thing actually.
-
-"""Strategy ideas/memes 
-	After a long time, most of these ideas still seem to fit the definition of what I now think of as a Strategy, so this is not a bad list, despite how early on into the process I wrote it.
-	# Team Plays
-		CenteringBall
-		Passing
-		
-	# Defensive plays
-		Saving
-		Shadowing	# Go towards our own goal while grabbing boost and while keeping a distance from the enemy depending on their speed. Look for opportunities to turn around with a powerslide and challenge the ball. DO NOT DODGE. If the enemy flicks, aerial for the save.
-		Clearing
-		Catching
-		Rotating	# Behaviour for disengaging after a failed attack. Prioritizing boost grabbing, look for opportunities for half flipping, wavedashing and shadowing.
-		Backpassing	# Shooting the ball towards our own side of the field, but strictly towards the corner, and strictly with a weak force. Will usually result in grabbing a corner boost then either going up the wall or powerslide turning into a powershot.
-		
-	# Offensive plays
-		Shooting	# Mostly used for empty nets.
-		Dribbling
-		Aerialing
-		Demolishing
-		
-	#Celebrations
-		Penising (this would (mostly) be a ControllerState)
-		Turtling (this would (entirely) be a ControllerState)
-		Tornadoing (mostly a ControllerState, or even a Maneuver.)
-		
-	# Plays while having ball control
-		BallControl_FindBoost
-		BallControl_HookShot
-	"""
 
 # Constants
 RAD_TO_DEG = 180/math.pi	# TODO make this into a util function.
@@ -444,20 +292,20 @@ class Botato(BaseAgent):
 		
 		self.active_strategy = Strat_Kickoff
 
-		self.time_old = 0
-		self.dt = 0
+		self.time_old = 1
+		self.dt = 1
 		self.last_self = None			# For storing the previous tick packet. Useful for getting deltas.
 
-		self.yaw_car_to_target = 0
-		self.distance_from_target = 0
+		self.yaw_car_to_target = 1
+		self.distance_from_target = 1
 
 		# Dodging
 		self.jumped = False
 		self.dodged = False
-		self.last_jump = 0				# Time of our last jump (Time of our last dodge is not stored currently)
+		self.last_jump = 1				# Time of our last jump (Time of our last dodge is not stored currently)
 		#temp
 		self.last_jump_loc = MyVec3(0,0,0)
-
+		
 		# Powersliding
 		self.powersliding = False
 		self.powersliding_since = 0		# Time when we started powersliding. Used to determine if we should drift.
@@ -483,8 +331,7 @@ class Botato(BaseAgent):
 			Preprocess.preprocess(self, packet)		# Cleaning up values
 			self.renderer.begin_rendering()
 			self.ball_prediction = self.get_ball_prediction_struct()
-			print("")
-		# Choosing Strategy
+			# Choosing Strategy
 			for s in strategies:
 				s.evaluate(self, self.teammates, self.opponents, ball, self.boost_pads, self.active_strategy)
 				if(s.viability > self.active_strategy.viability):
@@ -546,23 +393,9 @@ class Botato(BaseAgent):
 			speed_toward_target = (distance_now.size - distance_next.size) * 120
 			Debug.text_2d(self, 10, 100, "Speed toward target: " + str(speed_toward_target))
 		
-		# Powersliding (TODOOOOOO) - note to future self: the reason we split them up into maneuvers now is because the if statements below have to happen sort of for both of them, so that the two powersliding logics don't mess with each other. Still need to move the variables they need into their classes, and replace "self" with "car" a bunch of times.
-			powerslide2 = Powerslide2.get_output(self, self.active_strategy.target)
-
-			self.controller.handbrake = powerslide2.handbrake
-			if(self.controller.handbrake):	# TODO: This is only necessary because we reset out controller during preprocessing. I don't know if that's really necessary, or a good idea.
-				if(not self.powersliding):
-					self.powersliding = True
-			else:
-				self.powersliding=False
-
-			"""if(powerslide_big.handbrake or powerslide_small.handbrake and not self.powersliding):
-				self.controller.handbrake = True
-				self.powersliding = True
-			else:
-				self.controller.handbrake = False
-				self.powersliding=False
-			"""
+		# Powersliding
+			powerslide = Powerslide.get_output(self, self.active_strategy.target)
+			self.controller.handbrake = powerslide.handbrake# or powerslide1.handbrake
 
 		# Throttle
 			# TODO: powersliding has better results in certain situations with throttle=0 or throttle=1. Figure out when.
@@ -597,7 +430,7 @@ class Botato(BaseAgent):
 
 			dodge_steering_threshold = 0.51
 			dodge_speed_threshold = 1000
-			speed_toward_target_ratio = speed_toward_target / self.speed
+			speed_toward_target_ratio = speed_toward_target / (self.speed+0.0000001)
 			speed_toward_target_ratio_threshold = 0.97
 			dodge_duration = 1.3	# Rough expected duration of a dodge.
 			dodge_distance = min(self.speed+500, 2299) * dodge_duration		# Expected dodge distance based on our current speed. (Dodging adds 500 to our speed)
@@ -621,7 +454,7 @@ class Botato(BaseAgent):
 				if( dodge_delay >= time.time() - self.last_jump >= dodge_delay-0.1		# We're 0.03s away from the time when we should dodge. (TODO: I hope this doesn't break at low framerate :S)
 					and not self.dodged):
 					controller.jump = False
-					print("STEP TWOOOOOOOOOOOOOOOO.5")
+					#print("STEP TWOOOOOOOOOOOOOOOO.5")
 				
 				# Step 3 - Dodge, continue air steering in the target direction until we land. This runs ONCE!
 				elif(time.time() - self.last_jump >= dodge_delay		# It's time to dodge.
@@ -632,7 +465,7 @@ class Botato(BaseAgent):
 						#print(local_target_unit_vec)
 						controller.jump = True
 						self.dodged = True
-						print("step 3 REEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+						#print("step 3 REEEEEEEEEEEEEEEEEEEEEEEEEEEE")
 				
 				# Step 4 - Before landing, continue steering toward the target.
 				elif(self.dodged 										# We already dodged
@@ -641,9 +474,9 @@ class Botato(BaseAgent):
 					
 				elif(self.dodged and self.wheel_contact):
 					#print("dodge duration from jump to landing:")
-					print(time.time()-self.last_jump)
+					#print(time.time()-self.last_jump)
 					#print("dodge distance")
-					print((self.location - self.last_jump_loc).size) 
+					#print((self.location - self.last_jump_loc).size) 
 					self.jumped=False
 					self.dodged=False
 					controller.jump=False
@@ -712,9 +545,7 @@ class Botato(BaseAgent):
 
 		return vec3(my_raycast.start)
 
-# How is a ControllerState different from a Maneuver? A controller state can execute a Maneuver and then choose to ignore part of its output. Doing this, it can combine different inputs from different maneuvers, among other things.
-
-class Maneuver():
+class Maneuver():	# TODO we could just extend SimpleControllerState so we can just set self.handbrake instead of self.controller.handbrake. Idk.
 	"""Base class for maneuvers. Maneuvers are used by ControllerStates to get to a point in a specific way."""
 	controller = SimpleControllerState()
 
@@ -722,51 +553,45 @@ class Maneuver():
 	def get_output(cls, car, target) -> SimpleControllerState:
 		return cls.controller
 
-class Powerslide1(Maneuver):
-	"""This tries to stop powersliding once the yaw threshold is hit. Doesn't work very well, over and under-slides are common, adjusting the threshold improves one but worsens the other."""
-	yaw_threshold = 90					# We want to powerslide if we're facing more than this many degrees away from target.
-	
+class Powerslide(Maneuver):
+	"""Two separate yaw thresholds, one for starting and one for ending the powerslide, both are dynamic and based on a shitload of factors that can be tweaked."""
+	active = False
+	threshold_begin_slide_angle = 90	# decrease this based on speed or whatever.
+	threshold_end_slide_angle = 25		# increase this based on speed or whatever.
+	last_slide_start = 0
+	slide_gap = 1						# Time that has to pass before reactivating.
+
 	@classmethod
 	def get_output(cls, car, target) -> SimpleControllerState:
-		delta_yaw = abs((car.yaw_car_to_target - car.last_self.yaw_car_to_target))*(1/car.dt)							# How fast we are approaching the correct alignment, in degrees/sec
-		time_to_aligned = car.yaw_car_to_target / (delta_yaw+0.00000001)													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
-		time_threshold = 1				# We should keep powersliding if the estimated time to alignment based on delta_Yaw is greater than this many seconds.
-		if(
-			(abs(car.yaw_car_to_target) > cls.yaw_threshold		# We're facing far away from the target.
-			or time_to_aligned > time_threshold)				# Or the estimated time to alignment is high.
-			and car.location.z < 50								# We aren't on a wall.
-			and car.wheel_contact								# We are touching the ground.
+		if(			# Step 2 - Continue Powersliding
+			cls.active
+			and abs(car.yaw_car_to_target) > cls.threshold_end_slide_angle
 		):
 			cls.controller.handbrake = True
-		else:
+		else:		# Step 3 - Finish powersliding
 			cls.controller.handbrake = False
+			cls.active=False
+		if(			# Step 1 - Begin powersliding
+			not cls.active
+			and time.time() - cls.last_slide_start > cls.slide_gap
+		):		# Calculate requirements to begin and end the powerslide.
+			delta_yaw = abs((car.yaw_car_to_target - car.last_self.yaw_car_to_target))*(1/car.dt)							# How fast we are approaching the correct alignment, in degrees/sec
+			time_to_aligned = car.yaw_car_to_target / (delta_yaw+0.00000001)													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
+		
+			# TODO: The begin threshold will need to go even lower, the faster we are going. This might still be prone to orbiting.
+			cls.threshold_begin_slide_angle = 40
+			end_threshold_yaw_factor = 0.6
+			cls.threshold_end_slide_angle = abs(car.yaw_car_to_target) * end_threshold_yaw_factor
+			
+			if(
+				abs(car.yaw_car_to_target) > cls.threshold_begin_slide_angle
+				and car.location.z < 50
+				and car.wheel_contact
+				and car.speed > 500
+			):
+				cls.active=True
+				cls.last_slide_start = time.time()
+				#print("current angle: " + str(abs(car.yaw_car_to_target)))
+				#print("end angle: " + str(cls.threshold_end_slide_angle))
 
-		return cls.controller
-
-class Powerslide2(Maneuver):
-	"""This maneuver tries to determine at the beginning of the powerslide how long the powerslide should last. (WIP: Duration is currently a constant.)"""
-	powerslide_until = -1
-	last_ended = -1
-
-	@classmethod
-	def get_output(cls, car, target) -> SimpleControllerState:
-		yaw_threshold = 25			# Yaw to target has to be greater than this.
-		slide_duration = 0.5		# Max slide duration.
-		time_gap = 0.5				# Time that has to pass before this maneuver can be re-activated.
-		if(
-			Powerslide1.yaw_threshold > abs(car.yaw_car_to_target) > yaw_threshold
-			and (time.time() < cls.powerslide_until
-			or time.time() > cls.powerslide_until + time_gap)
-			and car.location.z < 50								# We aren't on a wall.
-			and car.wheel_contact								# We are touching the ground.
-		):
-			cls.controller.handbrake = True
-			if( not car.powersliding ):	# If We just started powersliding
-				# Activate this maneuver
-				print("started small powerslide")
-				cls.powerslide_until = time.time() + slide_duration
-		elif(car.powersliding):
-			# Deactivate this maneuver
-			#print("ended small powerslide")
-			cls.controller.handbrake=False
 		return cls.controller

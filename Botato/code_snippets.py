@@ -98,3 +98,54 @@
 		# line_2d_from_center(car, bottom_right.x, 	bottom_right.y, top_right.x, 	top_right.y, 	color)
 		# line_2d_from_center(car, top_right.x, 		top_right.y, 	top_left.x, 	top_left.y, 	color)
 		# line_2d_from_center(car, top_left.x, 		top_left.y, 	bottom_left.x, 	bottom_left.y, 	color)
+
+"""Old shitty powerslides"""
+	class Powerslide1(Maneuver):
+		"""This tries to stop powersliding once the yaw threshold is hit. Doesn't work very well, over and under-slides are common, adjusting the threshold improves one but worsens the other."""
+		yaw_threshold = 90					# We want to powerslide if we're facing more than this many degrees away from target.
+		
+		@classmethod
+		def get_output(cls, car, target) -> SimpleControllerState:
+			delta_yaw = abs((car.yaw_car_to_target - car.last_self.yaw_car_to_target))*(1/car.dt)							# How fast we are approaching the correct alignment, in degrees/sec
+			time_to_aligned = car.yaw_car_to_target / (delta_yaw+0.00000001)													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
+			time_threshold = 1				# We should keep powersliding if the estimated time to alignment based on delta_Yaw is greater than this many seconds.
+			if(
+				(abs(car.yaw_car_to_target) > cls.yaw_threshold		# We're facing far away from the target.
+				or time_to_aligned > time_threshold)				# Or the estimated time to alignment is high.
+				and car.location.z < 50								# We aren't on a wall.
+				and car.wheel_contact								# We are touching the ground.
+			):
+				cls.controller.handbrake = True
+			else:
+				cls.controller.handbrake = False
+
+			return cls.controller
+
+	class Powerslide2(Maneuver):
+		"""This maneuver tries to determine at the beginning of the powerslide how long the powerslide should last. (WIP: Duration is currently a constant.)"""
+		powerslide_until = -1
+		last_ended = -1
+
+		@classmethod
+		def get_output(cls, car, target) -> SimpleControllerState:
+			yaw_threshold = 25			# Yaw to target has to be greater than this.
+			slide_duration = 0.3		# Max slide duration.
+			time_gap = 0.5				# Time that has to pass before this maneuver can be re-activated.
+			if(
+				Powerslide1.yaw_threshold > abs(car.yaw_car_to_target) > yaw_threshold
+				and (time.time() < cls.powerslide_until
+				or time.time() > cls.powerslide_until + time_gap)
+				and car.location.z < 50								# We aren't on a wall.
+				and car.wheel_contact								# We are touching the ground.
+			):
+				cls.controller.handbrake = True
+				if( not car.powersliding ):	# If We just started powersliding
+					# Activate this maneuver
+					print("started small powerslide")
+					cls.powerslide_until = time.time() + slide_duration
+			elif(car.powersliding):
+				# Deactivate this maneuver
+				#print("ended small powerslide")
+				cls.controller.handbrake=False
+			return cls.controller
+

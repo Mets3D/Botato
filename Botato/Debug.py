@@ -158,12 +158,12 @@ def render_all(car):
 	# Render Car Transforms
 		vec2str = lambda vec: str(int(vec.x)) + " " + str(int(vec.y)) + " " + str(int(vec.z))
 		if(car.debug_car):
-			text_2d(car, 1500, 10, "Car Loc: " + vec2str(car.location) )
-			text_2d(car, 1500, 40, "Car Vel: " + vec2str(car.velocity/100) )
-			text_2d(car, 1421, 70, "Local Car Vel: " + vec2str(local_coords(car, car.velocity)/100) )
-			text_2d(car, 1500, 100, "Car Spd: " + str(int(car.velocity.length)) )
+			text_2d(car, 1400, 10, "Car Loc: " + vec2str(car.location) )
+			text_2d(car, 1400, 40, "Car Vel: " + vec2str(car.velocity/100) )
+			text_2d(car, 1273, 70, "Local Car Vel: " + vec2str(local_coords(car, car.velocity)/100) )
+			text_2d(car, 1400, 100, "Car Spd: " + str(int(car.velocity.length)) )
 
-			text_2d(car, 1500, 130, "Car AV: " + vec2str(car.av*1000))
+			text_2d(car, 1400, 130, "Car AV: " + vec2str(car.av*1000))
 	# Render Ball Transforms
 		if(car.debug_ball):
 			text_2d(car, 1500, 150, "Ball Loc: " + vec2str(ball.location))
@@ -199,5 +199,5 @@ def render_all(car):
 			color = car.renderer.lime() if car.controller.handbrake else car.renderer.red()
 			text_2d(car, ctrl_disp[0], ctrl_disp[1], "Powerslide: " + str(bool(car.controller.handbrake)), color=color)
 			# Angular Velocity : Yaw Difference ratio
-			av_to_yaw_ratio = (car.av.z) / car.yaw_car_to_target
+			av_to_yaw_ratio = (car.av.z) / (car.yaw_car_to_target+0.0000001)
 			text_2d(car, ctrl_disp[0], ctrl_disp[1]+30, "AV.z:Yaw = " + str( av_to_yaw_ratio ))

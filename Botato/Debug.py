@@ -15,6 +15,20 @@ def ensure_color(r, color=None):
 	else:
 		return color
 
+def shitty_3d_rectangle(car, loc, width=100, height=100, color=None):
+	"""Draw a rectangle out of 4 lines, until we get draw_rect_3d back."""
+	color = ensure_color(car.renderer, color)
+
+	bottom_left = loc + (width/2, height/2, 0)
+	bottom_right = loc + (-width/2, height/2, 0)
+	top_left = loc + (width/2, -height/2, 0)
+	top_right = loc + (-width/2, -height/2, 0)
+
+	line_2d_3d(car, bottom_left, bottom_right, color)
+	line_2d_3d(car, bottom_right, top_right, color)
+	line_2d_3d(car, top_right, top_left, color)
+	line_2d_3d(car, top_left, bottom_left, color)
+
 def text_2d(car, x, y, text, scale=2, color=None):
 	r = car.renderer
 	color = ensure_color(r, color)
@@ -130,6 +144,15 @@ def analogue_stick(car, x, y, size=300, color_stick=None, color_bg=None):
 	pass	# TODO for drawing the controller inputs.
 
 def render_all(car):
+	# Boost locations
+		#print(type(car.boost_locations[0].location))
+		boost_locations = [MyVec3(l.location.x, l.location.y, 50) for l in car.boost_locations]
+		for i, boost_loc in enumerate(boost_locations):
+			#if(i<49):
+			#	vector_2d_3d(car, boost_locations[i], boost_locations[i+1])
+			color = car.renderer.red() if not car.boost_pads[i].is_active else None
+			shitty_3d_rectangle(car, MyVec3(boost_loc), color=color)
+
 	# Render target (line and square)
 		if(car.debug_target):
 			# Car / Center of local space
@@ -143,8 +166,11 @@ def render_all(car):
 			# Target Location Vector
 			vector_2d_3d(car, car.active_strategy.target.location, color=car.renderer.white(), draw_2d=True, draw_3d=True)
 			
-			text_2d(car, 10, 240, "(Global)Yaw to target: " + str(int(car.yaw_car_to_target)))
+			text_2d(car, 10, 240, "Yaw to target: " + str(int(car.yaw_car_to_target)))
 			text_2d(car, 10, 270, "Distance from target: " + str(int(car.distance_from_target)))
+			
+			time_to_reach = distance(car.location, car.active_strategy.target).size/car.speed
+			text_2d(car, 10, 300, "Time till arrival: " + str(time_to_reach))
 
 	# Render prediction (hue indicates dt, red=near future, blue=distant future)
 		if car.ball_prediction is not None and car.debug_prediction:
@@ -159,11 +185,12 @@ def render_all(car):
 		vec2str = lambda vec: str(int(vec.x)) + " " + str(int(vec.y)) + " " + str(int(vec.z))
 		if(car.debug_car):
 			text_2d(car, 1400, 10, "Car Loc: " + vec2str(car.location) )
-			text_2d(car, 1400, 40, "Car Vel: " + vec2str(car.velocity/100) )
-			text_2d(car, 1273, 70, "Local Car Vel: " + vec2str(local_coords(car, car.velocity)/100) )
+			text_2d(car, 1400, 40, "Car Vel: " + vec2str(car.velocity) )
+			text_2d(car, 1273, 70, "Local Car Vel: " + vec2str(local_coords(car, car.velocity)) )
 			text_2d(car, 1400, 100, "Car Spd: " + str(int(car.velocity.length)) )
+			text_2d(car, 1400, 130, "Des Spd: " + str(int(car.active_strategy.desired_speed)) )
 
-			text_2d(car, 1400, 130, "Car AV: " + vec2str(car.av*1000))
+			text_2d(car, 1400, 160, "Car AV: " + vec2str(car.av*1000))
 	# Render Ball Transforms
 		if(car.debug_ball):
 			text_2d(car, 1500, 150, "Ball Loc: " + vec2str(ball.location))
@@ -199,5 +226,5 @@ def render_all(car):
 			color = car.renderer.lime() if car.controller.handbrake else car.renderer.red()
 			text_2d(car, ctrl_disp[0], ctrl_disp[1], "Powerslide: " + str(bool(car.controller.handbrake)), color=color)
 			# Angular Velocity : Yaw Difference ratio
-			av_to_yaw_ratio = (car.av.z) / (car.yaw_car_to_target+0.0000001)
-			text_2d(car, ctrl_disp[0], ctrl_disp[1]+30, "AV.z:Yaw = " + str( av_to_yaw_ratio ))
+			#av_to_yaw_ratio = (car.av.z) / (car.yaw_car_to_target+0.0000001)
+			#text_2d(car, ctrl_disp[0], ctrl_disp[1]+30, "AV.z:Yaw = " + str( av_to_yaw_ratio ))

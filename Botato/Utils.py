@@ -5,6 +5,44 @@ from Objects import *
 
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 
+
+# Constants
+RAD_TO_DEG = 180/math.pi	# TODO make this into a util function.
+# Accelerations (uu/s^2)
+ACCEL_BOOST = 991.666
+ACCEL_BRAKE = -3500
+ACCEL_COAST = -525
+ACCEL_GRAV = 650
+
+
+# TODO in general, I feel like there are a bunch of things built into python like math and Vector3 that we are re-implementing for no reason. Try to minimize that at some point.
+
+def lerp(from_val, to_val, factor, clamp=False):
+	if(clamp):
+		factor = clamp(factor, 0, 1)
+	return from_val + (to_val-from_val) * factor
+
+def rlerp(from_val, to_val, value):	# Find factor that would yield value when interpolated from start to end.
+	factor = (value-from_val) / (to_val-from_val)
+	return factor
+
+def multilerp(x, y, value):
+	if(type(x)!=list or type(y)!=list):return
+	if(len(x)!=len(y)):return
+	if(value > x[-1]): return
+
+	for i, e in enumerate(x):
+		if(x[i+1] > value > x[i]):
+			factor = rlerp(x[i], x[i+1], value)
+			return lerp(y[i], y[i+1], factor)
+
+def get_throttle_accel(vel):
+	""" Get available acceleration from throttle=1 """
+	x = [0, 1400, 1410, 2300]
+	y = [1600, 160, 0, 0]
+	return multilerp(x, y, vel)
+
+
 def local_coords(origin_object, target_location) -> MyVec3:
 	""" Returns the target location as local coordinates of origin_object."""
 	# Originally by GooseFairy https://github.com/ddthj/Gosling/blob/master/Episode%203%20Code/Util.py
@@ -34,9 +72,12 @@ def loc(obj) -> Vector3:
 def z0(loc):
 	return Vector3(loc.x,loc.y,0)
 
-def distance(obj1, obj2) -> float:
-	return obj1-obj2
-	#return Vector3(loc(obj1) - loc(obj2)).size
+def distance(loc1, loc2) -> float:
+	if(hasattr(loc1, "location")):
+		loc1 = loc1.location
+	if(hasattr(loc2, "location")):
+		loc2 = loc2.location
+	return loc1-loc2
 
 def angle_to(source, target, direction = 1.0) -> float:
 	v1 = source.rotation.to_vector3() * direction  

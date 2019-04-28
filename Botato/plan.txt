@@ -18,10 +18,9 @@
 	"""
 
 """TODO
-	Next features to implement: Improving fundamental movement.
-		- Teach him to arrive at the destination in a set amount of time rather than as fast as possible(which will be useful for timing all kinds of shots, when I get there)
-	Features after that:
-		- Research other bots again, re-think our design in case we find any that seem better.
+	Next
+		- Create a practice system so we can put Botato in situations to test his abilities.
+		-	Also want to be able to take control of Botato for debugging.
 		- Sub-Target System (I think each strategy should be responsible for finding a path to their target while placing sub-targets for optimal boost pads and optimal angle, timing and speed of arrival at the target...)
 		- Picking up boosts
 		- Navigating on the wall(new ControllerState, switching to that when needed) (Also need a new testing Strategy, PickLocationOnWall)

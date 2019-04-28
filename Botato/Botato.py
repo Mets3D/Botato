@@ -13,16 +13,9 @@ from keyboard_input import keyboard
 # RLBot
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
-from rlbot.utils.game_state_util import GameState, BallState, CarState, Physics, GameInfoState, Vector3
-#from rlbot.utils.game_state_util import Rotator as gsu_rot
-from rlbot.agents.human.controller_input import controller as user
 
 # RLUtilities
 from rlutilities.simulation import Ball, Field, Game, ray
-
-# Constants
-RAD_TO_DEG = 180/math.pi	# TODO make this into a util function.
-# TODO in general, I feel like there are a bunch of things built into python like math and Vector3 that we are re-implementing for no reason. Don't do that.
 
 def find_nearest(objs, obj):
 	"""Find object in objs that is nearest to obj."""
@@ -58,6 +51,7 @@ class Strategy:
 	bias_bump = 0.0				# How flexible this strategy is to bumping.
 	viability = 0				# Stores the result of evaluate().
 	target = vec3(0, 0, 0)
+	desired_speed = 2300
 	"""
 	@property
 	def target(self):
@@ -244,17 +238,23 @@ class Strat_MoveToRandomPoint(Strategy):
 		car_target_dist = (car.location - target_obj.location).size
 
 		if(car_target_dist < 200 or cls.target.x==0):
-			arena = vec3(8200*.5, 10280*.6, 2050*0.1)
+			arena = vec3(8200*.9, 10280*.9, 2050*0.1)
 			random_point = vec3( (random.random()-0.5) * arena.x, (random.random()-0.5) * arena.y, 100 )
 			# goal1 = vec3( 1, arena.y*0.4, 17)
 			# random_point = vec3( 1, -arena.y*0.4, 17)
 			# if(random.random()>0.5):
 			# 	random_point=goal1
+			
+			# Pick a speed with which we want to get there. (In the future this would be calculated based on the prediction of how far in time(da future) the ball is going to be where we need it to be)
+			cls.desired_speed = 500+random.random()*1800
+			#cls.desired_speed = 1300
+			#print("desired speed: " + str(cls.desired_speed))
+			
 			cls.target = random_point
 		else:
 			pass
 
-		car.cs_on_ground(target_obj.location, controller)
+		car.cs_on_ground(target_obj.location, controller, cls.desired_speed)
 		super().execute(car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer)
 		return controller
 
@@ -272,6 +272,8 @@ strategies = [Strat_Kickoff,
 class Botato(BaseAgent):
 	def __init__(self, name, team, index):
 		super().__init__(name, team, index)
+
+		keyboard.make_toggle("x")
 
 		# RLBot
 		self.controller = SimpleControllerState()
@@ -299,12 +301,16 @@ class Botato(BaseAgent):
 		self.yaw_car_to_target = 1
 		self.distance_from_target = 1
 
+		# Throttle
+		self.acceleration = vec3(0,0,0)
+		self.throttle_accel = 0
+
 		# Dodging
 		self.jumped = False
 		self.dodged = False
 		self.last_jump = 1				# Time of our last jump (Time of our last dodge is not stored currently)
 		#temp
-		self.last_jump_loc = MyVec3(0,0,0)
+		self.last_jump_loc = vec3(0,0,0)
 		
 		# Powersliding
 		self.powersliding = False
@@ -323,14 +329,27 @@ class Botato(BaseAgent):
 		self.wheel_contact_old = True	# The state of wheel_contact in the previous tick.
 		self.last_wheel_contact = 0		# Last time when wheel_contact has changed.
 
+		# Other entities
 		#TODO These shouldn't be stored in self, just like how the ball isn't. self==things belonging to the car.
 		self.boost_pads = list()
 		self.boost_locations = list()
+
+		self.opponents = list()
+		self.teammates = list()
+
+		self.boost_pads = []
+		self.boost_locations = []
 		
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
 			Preprocess.preprocess(self, packet)		# Cleaning up values
 			self.renderer.begin_rendering()
 			self.ball_prediction = self.get_ball_prediction_struct()
+
+			#print(dir(self.boost_locations[0]))
+			#print(len(self.boost_locations))
+
+			keyboard.update()
+
 			# Choosing Strategy
 			for s in strategies:
 				s.evaluate(self, self.teammates, self.opponents, ball, self.boost_pads, self.active_strategy)
@@ -338,35 +357,23 @@ class Botato(BaseAgent):
 					self.active_strategy = s
 			
 			self.controller = self.active_strategy.execute(self, self.opponents, self.teammates, ball, self.boost_pads, self.active_strategy, self.controller, self.renderer)
-			
-		# Set Game State
-			y = clamp(self.location.y, -arena_y/2, arena_y/2)
-			#ball_state = BallState(Physics(location=Vector3(self.location.x, y, self.location.z+500), velocity=Vector3(0,0,0)))
-			car_state = CarState(boost_amount=100)
-			game_state = GameState(cars={self.index: car_state})
-			#game_state = GameState(ball=ball_state, cars={self.index: car_state})
-			self.set_game_state(game_state)
-			
-		# Handle Input (need to plug in a controller) TODO: implement keyboard input and training and more interactive debug tools.
-			if(user.jump):
-				self.game_state_snapshot = GameState.create_from_gametickpacket(packet)
-				self.target_snapshot = vec3(self.active_strategy.target)
-				print("Saved game state")
-			elif(user.handbrake):
-				#self.set_game_state(self.game_state_snapshot)
-				#self.active_strategy.target = self.target_snapshot
-				# Hardcoded game state
-				car_state = CarState(jumped=False, double_jumped=False, boost_amount=87, 
-										physics=Physics(location=Vector3(700, -200, 17), velocity=Vector3(500, -500, 8), rotation=Rotator(0, math.pi*2, 0),
-										angular_velocity=Vector3(0, 0, 0)))
 
-				ball_state = BallState(Physics(location=Vector3(1000, 1000, 100)))
-				game_info_state = GameInfoState(game_speed=1)
-				game_state = GameState(ball=ball_state, cars={self.index: car_state}, game_info=game_info_state)
+		# Debug Input
+			# Take control of Botato
+			if(keyboard.toggles['x']):
+				self.controller.throttle = keyboard.key_down("w") - keyboard.key_down("s")
+				self.controller.pitch = -self.controller.throttle
 
-				self.set_game_state(game_state)
-				self.active_strategy.target = vec3(800, 0, 17)
-				print("Loaded game state")
+				self.controller.steer = keyboard.key_down("d") - keyboard.key_down("a")
+				self.controller.handbrake = keyboard.key_down("left shift")
+				if(self.controller.handbrake):
+					self.controller.roll = self.controller.steer
+				else:
+					self.controller.yaw = self.controller.steer
+
+
+				self.controller.jump = keyboard.key_down("space")
+				self.controller.boost = keyboard.key_down("enter")
 
 		# Debug Render - only for index==0 car.
 			if(self.index==0):
@@ -378,7 +385,7 @@ class Botato(BaseAgent):
 			self.last_self = copy.copy(self)
 			return self.controller
 
-	def cs_on_ground(self, target, controller):
+	def cs_on_ground(self, target, controller, desired_speed):
 			"""ControllerState for moving on the floor. Not necessarily ideal for hitting the ball!"""
 			# TODO: Wavedashing & Half-Flipping? Need to figure out how I want to structure the concept of "Maneuvers".
 		# Target Math
@@ -391,7 +398,7 @@ class Botato(BaseAgent):
 			distance_now = distance(self.location, target)
 			distance_next = distance(velocity_at_car, target)
 			speed_toward_target = (distance_now.size - distance_next.size) * 120
-			Debug.text_2d(self, 10, 100, "Speed toward target: " + str(speed_toward_target))
+			Debug.text_2d(self, 10, 200, "Speed toward target: " + str(speed_toward_target))
 		
 		# Powersliding
 			powerslide = Powerslide.get_output(self, self.active_strategy.target)
@@ -399,14 +406,19 @@ class Botato(BaseAgent):
 
 		# Throttle
 			# TODO: powersliding has better results in certain situations with throttle=0 or throttle=1. Figure out when.
-			# TODO: sometimes we might want to reverse? But really only to half-flip, which we can't do yet.
-			if( 
+			# TODO: sometimes we might want to reverse? But really only to half-flip, which we can't do yet. Even if we learn it, sometimes we might want to drive backwards into the ball and only half-flip when we get there.
+			if(
 				abs(self.yaw_car_to_target) > 40	# This number should be some function of distance from target?
 				and self.distance_from_target < 1000):
 					controller.throttle = (self.distance_from_target/1000) * (self.yaw_car_to_target) / 40
 					controller.throttle = clamp(controller.throttle, 0, 1)
-			controller.throttle = 1
-
+			
+			if(self.speed-1 < desired_speed):
+				controller.throttle = 1
+			elif(self.speed < desired_speed):	# Decrease our throttle to 0.02 to maintain acceleration
+				controller.throttle = 0.02
+			else:								# Throttle=0 to decelerate
+				controller.throttle = 0
 		# Steering
 			turn_power = 20	# Increasing makes it align faster but be more wobbly, decreasing makes it less wobbly but align slower. This could possibly be improved but it's pretty good as is.
 			controller.steer = clamp(self.yaw_car_to_target/turn_power, -1, 1)
@@ -487,6 +499,7 @@ class Botato(BaseAgent):
 			elif( 	
 					self.speed > dodge_speed_threshold								# We are going fast enough (Dodging while slow is not worth it)
 					and abs(self.av.z) < 1500										# We aren't spinning like crazy
+					and self.speed+500 < desired_speed
 					and speed_toward_target_ratio > speed_toward_target_ratio_threshold # We are moving towards the target with most of our speed.
 					and self.yaw_car_to_target < 40									# We are more or less facing the target.
 					and self.distance_from_target > 1500 							# We are far enough away from the target TODO: this value needs to be dynamic, based on speed. (more speed, higher threshold) but it can have an allowance for overshooting, which could be a parameter.
@@ -510,13 +523,24 @@ class Botato(BaseAgent):
 			yaw_limit = 10
 			max_speed = 2300
 			z_limit = 100
+
+			base_accel = self.dt * self.throttle_accel
+			boost_accel = self.dt * ACCEL_BOOST
+			time_to_reach = distance_now.size/self.speed
+			#print(time_to_reach)
+			#print(self.throttle_accel)
+
 			if(	 													# When do we want to boost?
-				controller.handbrake == False						# We are not powersliding (TODO: We should actually boost in the beginning of powersliding, or maybe even the whole way through.)
-				and abs(self.yaw_car_to_target) < yaw_limit				# We are reasonably aligned with our target
-				and self.speed < max_speed 							# We are not going very fast (TODO: In the future, when our speed is lower than desired speed)
+				controller.handbrake == False						# We are not powersliding (TODO: We might actually want to boost in the beginning (and/or end) of powersliding.)
+				and abs(self.yaw_car_to_target) < yaw_limit			# We are reasonably aligned with our target
 				and self.location.z < z_limit 						# We are not on a wall or goalpost (for now) (delete this when facing towards target is implemented, then just add a roll check ro make sure we aren't upside down or something...)
 				and (0 > self.rotation.pitch * RAD_TO_DEG > -50)	# We are not facing the sky or ground (possibly redundant)
 				#and abs(self.rotation.roll) * RAD_TO_DEG < 90 		# We are not sideways/on a wall (possibly redundant/wong to have this, idk.)
+				):
+				if(			# Further checks to see if we need the acceleration (This is a separate if for organization only)
+					self.speed < max_speed 									# We are not going very fast (TODO: In the future, when our speed is lower than desired speed)
+					and self.speed+base_accel+boost_accel < desired_speed	# We aren't going fast enough. (TODO: This could be smarter. We might be able to accelerate to the desired speed without boost.)
+					# TODO: Stop weirdly feathering boost, especially under 1400 speed, as long as we'll still accelerate fast enough to get there without using boost.
 				):
 					controller.boost = True
 			else:

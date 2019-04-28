@@ -1,231 +1,44 @@
-from inputs import get_key  # pip install inputs
-from inputs import get_gamepad
-from inputs import get_mouse
-from rlbot.agents.base_agent import SimpleControllerState
-import threading
 
-def deadzone(normalized_axis):
-	if abs(normalized_axis) < 0.1: return 0.0
-	return normalized_axis
+import pygame
 
-class KeyboardInput:
+# By GooseFairy https://discordapp.com/channels/348658686962696195/348658686962696196/570442556526034995
+class gui:
 	def __init__(self):
-		self._gas_pedal = 0.0
-		self._brake_pedal = 0.0
-
-		self._left_stick_x = 0.0
-		self._left_stick_y = 0.0
-
-		self._right_stick_x = 0.0
-		self._right_stick_y = 0.0
-
-		self._north = 0
-		self._east = 0
-		self._south = 0
-		self._west = 0
-
-		self._hat_x = 0
-		self._hat_y = 0
-
-		self._tl = 0
-		self._tr = 0
-
-		self._thumb_l = 0
-		self._thumb_r = 0
-
-		self._select = 0
-		self._start = 0
-
-
-	@property
-	def throttle(self):
-		return self._gas_pedal - self._brake_pedal
-
-	@property
-	def steer(self):
-		return self._left_stick_x
-
-	@property
-	def roll(self):
-		return self._left_stick_x if self.aerial_control else 0.0
-
-	@property
-	def yaw(self):
-		return 0.0 if self.aerial_control else self._left_stick_x
-
-	@property
-	def pitch(self):
-		return self._left_stick_y
-
-	@property
-	def jump(self):
-		return self._south
-
-	@property
-	def boost(self):
-		return self._east
-
-	@property
-	def handbrake(self):
-		return self._west 
-
-	@property
-	def aerial_control(self):
-		return self._tr
-
-	def get_output(self):
-		print("hello")
-		output = SimpleControllerState()
-
-		output.throttle = self.throttle
-		output.steer = self.steer
-		output.pitch = self.pitch
-		output.yaw = self.yaw
-		output.roll = self.roll
-		output.jump = self.jump
-		output.boost = self.boost
-		output.handbrake = self.handbrake
-
-		return output
-
-	def main_poll_loop(self):
-		print("hi")
-		while 1:
-			events = get_mouse()  # Blocking
-			if events:
-				for event in events:
-					print(event.ev_type, event.code, event.state)
-			break
+		pygame.init()
+		pygame.font.init()
+		pygame.key.set_repeat(False)
+		self.font = pygame.font.SysFont('uh',30)
+		self.window = pygame.display.set_mode((500,500))
+		self.white = (255,255,255)
+		self.buttons = dict()
+		self.toggles = dict()
+		self.functions = dict()
+		self.cur = 0
 	
-	@property
-	def left_stick_x(self):
-		return self._left_stick_x
+	def key_down(self, key_name):
+		if(key_name in self.buttons.keys()):
+			return self.buttons[key_name]
+		else:
+			return False
+		
+	def make_toggle(self, key_name, default=False):
+		"""Assign a toggle value to a key, so that it switches only on KEYDOWN events."""
+		self.toggles[key_name] = default
 
-	@property
-	def left_stick_y(self):
-		return self._left_stick_y
+	def update(self):
+		self.window.fill(self.white)
+		text = self.font.render("hello", False, (0,0,0))
+		self.window.blit(text, (250,250))
+		pygame.display.update()
+		for event in pygame.event.get():
+			if event.type in (pygame.KEYDOWN, pygame.KEYUP):
+				name = pygame.key.name(event.key)
+				if(event.type == pygame.KEYDOWN):
+					print(name)
+					if(name in self.toggles.keys()):				# Toggles
+						self.toggles[name] = not self.toggles[name]
+						print(self.toggles[name])
+				self.buttons[name] = event.type == pygame.KEYDOWN	# Held buttons
+		return self.cur
 
-	@property
-	def right_stick_x(self):
-		return self._right_stick_x
-
-	@property
-	def right_stick_y(self):
-		return self._right_stick_y
-
-	@property
-	def up(self):
-		return True if self._hat_y==-1 else False
-
-	@property  
-	def down(self):
-		return True if self._hat_y==1 else False
-
-	@property
-	def left(self):
-		return True if self._hat_x==-1 else False
-
-	@property
-	def right(self):
-		return True if self._hat_x==1 else False
-
-	@property
-	def start(self):
-		return self._select
-
-
-	#xbox exclusive
-	@property
-	def A(self):
-		return self._south
-
-	@property
-	def B(self):
-		return self._east
-	
-	@property
-	def X(self):
-		return self._west
-	
-	@property
-	def Y(self):
-		return self._north
-
-	@property
-	def left_back(self):
-		return self._tl
-	
-	@property
-	def right_back(self):
-		return self._tr
-
-	@property
-	def left_trigger(self):
-		return self._brake_pedal
-	
-	@property
-	def right_trigger(self):
-		return self._gas_pedal
-
-	@property
-	def left_thumb(self):
-		return self._thumb_l
-
-	@property
-	def right_thumb(self):
-		return self._thumb_r
-	
-	@property
-	def back(self):
-		return self._start
-
-
-	#ps3 exclusive
-	@property
-	def cross(self):
-		return self._south
-
-	@property
-	def circle(self):
-		return self._east
-	
-	@property
-	def square(self):
-		return self._west
-	
-	@property
-	def triangle(self):
-		return self._north
-
-	@property
-	def L1(self):
-		return self._tl
-	
-	@property
-	def R1(self):
-		return self._tr
-
-	@property
-	def L2(self):
-		return self._brake_pedal
-	
-	@property
-	def R2(self):
-		return self._gas_pedal
-
-	@property
-	def L3(self):
-		return self._thumb_l
-
-	@property
-	def R3(self):
-		return self._thumb_r
-	
-	@property
-	def select(self):
-		return self._start
-				
-
-keyboard = KeyboardInput()
-
-#threading.Thread(target=keyboard.main_poll_loop, daemon=True).start()
+keyboard = gui()

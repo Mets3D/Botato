@@ -14,6 +14,7 @@ ACCEL_BRAKE = -3500
 ACCEL_COAST = -525
 ACCEL_GRAV = 650
 
+arena = MyVec3(8200, 10280, 2050)
 
 # TODO in general, I feel like there are a bunch of things built into python like math and Vector3 that we are re-implementing for no reason. Try to minimize that at some point.
 

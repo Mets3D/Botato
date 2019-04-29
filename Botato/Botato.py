@@ -44,6 +44,29 @@ def get_yaw_relative(from_x, from_y, to_x, to_y, yaw):
 		yaw_relative -= 360
 	return yaw_relative
 
+def reachable(car, location, time_left):
+	"""This should be called on all predicted balls, to find the soonest predicted ball that we should drive towards."""
+	# This function should evolve as does Botato, since as he learns new things, the ball will become reachable in more situations!
+	# This could also be called for enemy cars to check if we can reach the ball before they do, but since this function relies on knowing a bot's abilities, that will be very unreliable.
+
+	if(location.z > 100):
+		return False	# :)
+	
+	# TODO: do some really fancy stuff to correctly calculate how fast we can get there. The more accurate this function is, the sooner Botato might be able to go for the ball. Of course as long as we are only hitting ground balls, it doesn't really matter.
+	speed = 1400 if car.boost < 30 else 2300	# Good enough for Botimus, good enough for me.
+	ground_loc = MyVec3(location.x, location.z, 93)
+	dist = distance(car.location, ground_loc)
+	minimum_speed_to_reach = dist / time_left
+	return minimum_speed_to_reach < speed
+
+def optimal_speed(dist, time_left, current_speed):
+	# In its current state this is straight from Botimus. Idk what Alpha is for, I guess an overspeeding factor to account for the imprecise reachable(). Better to get there too soon and park than to not get there in time. Still, not ideal.
+	# In any case, I don't have the brain capacity right now to think about this.
+    desired_speed = dist / max(0.01, time_left)
+    alpha = 1.3
+    return  alpha * desired_speed - (alpha - 1) * current_speed
+
+
 class Strategy:
 	"""Base Class for Strategies. Currently, inheriting is not used for much."""
 	
@@ -221,6 +244,58 @@ class Strat_HitBallTowardsNet(Strategy):
 		
 		return controller
 
+class Strat_HitBallTowardsNet2(Strategy):
+	"""Temporary dumb strategy to move the ball towards the enemy goal."""
+	"""Upgraded with ball prediction, maybe."""
+
+	name = "Hit Ball Towards Net"
+	bias_boost = 0.6
+	bias_bump = 0.6
+	
+	@classmethod
+	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
+		cls.viability=0.99
+	
+	@classmethod
+	def execute(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
+		controller.throttle = 1
+
+		car_ball_dist = distance(car, ball)
+		goal_ball_dist = distance(car.enemy_goal, ball)
+		car_enemy_goal_dist = distance(car, car.enemy_goal)
+		# We project a line from the goal towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
+		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the enemy goal) the ball.
+		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
+		goal_ball_vec = car.enemy_goal.location - ball.location
+		ball_dist_ratio = car_ball_dist/goal_ball_dist
+		Debug.text_2d(car, 1000, 800, str(ball_dist_ratio))
+		desired_distance_from_ball = car_ball_dist/2
+		
+		car.location - car.enemy_goal.location
+		
+		cls.target = ball.location - (goal_ball_vec.normalized * desired_distance_from_ball)
+
+		# TODO Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
+		# TODO could also aim at the opposite corner of the net rather than the center.
+
+		# Avoid hitting towards our own net.
+		yaw_car_to_enemy_goal = get_yaw_relative(car.location.x, car.location.y, car.enemy_goal.location.x, car.enemy_goal.location.y, car.rotation.yaw)
+		Debug.text_2d(car, 600, 200, "angle to enemy goal: " + str(yaw_car_to_enemy_goal))
+		# If we are between the ball and the enemy goal(ie. the wrong side of the field)
+		# TODO: Instead of a binary result if, make this more dynamic.if(car_enemy_goal_dist < car_ball_dist):
+		# TODO tbqh in this situation this Strategy shouldn't even be the active one, keep that in mind for future. (ie. this part can probably be removed later)
+		if(car_enemy_goal_dist < goal_ball_dist):
+			if(yaw_car_to_enemy_goal > 90):
+				cls.target += MyVec3(300, 0, 0)
+			elif(yaw_car_to_enemy_goal < -90):
+				cls.target += MyVec3(-300, 0, 0)
+
+		car.cs_on_ground(cls.target, controller)
+
+		super().execute(car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer)
+		
+		return controller
+
 class Strat_MoveToRandomPoint(Strategy):
 	"""Strategy for testing general movement, without having to worry about picking the target location correctly."""
 	
@@ -274,9 +349,7 @@ strategies = [Strat_Kickoff,
 class Botato(BaseAgent):
 	def __init__(self, name, team, index):
 		super().__init__(name, team, index)
-
-		keyboard.make_toggle("x")
-
+		
 		# RLBot
 		self.controller = SimpleControllerState()
 		self.ball_prediction = None
@@ -285,15 +358,20 @@ class Botato(BaseAgent):
 		Game.set_mode("soccar")
 		self.game = Game(index, team)
 
+		# Debug Tools
+		keyboard.make_toggle("x")
+		self.training = None
+		self.saved_state = None			# For saving and loading states.
+
 		# Debug toggles
 		self.debug_strats = 		False
 		self.debug_controls = 		True
 		self.debug_dodge = 			False
-		self.debug_prediction = 	False
+		self.debug_prediction = 	True
 		self.debug_car = 			True
 		self.debug_ball = 			True
 		self.debug_target = 		True
-		
+
 		self.active_strategy = Strat_Kickoff
 
 		self.time_old = 1
@@ -330,8 +408,7 @@ class Botato(BaseAgent):
 		self.wheel_contact = True
 		self.wheel_contact_old = True	# The state of wheel_contact in the previous tick.
 		self.last_wheel_contact = 0		# Last time when wheel_contact has changed.
-		self.saved_state = None			# For saving and loading states.
-
+		
 		# Other entities
 		#TODO These shouldn't be stored in self, just like how the ball isn't. self==things belonging to the car.
 		self.boost_pads = list()
@@ -351,8 +428,6 @@ class Botato(BaseAgent):
 			#print(dir(self.boost_locations[0]))
 			#print(len(self.boost_locations))
 
-			keyboard.update()
-
 			# Choosing Strategy
 			for s in strategies:
 				s.evaluate(self, self.teammates, self.opponents, ball, self.boost_pads, self.active_strategy)
@@ -362,8 +437,16 @@ class Botato(BaseAgent):
 			self.controller = self.active_strategy.execute(self, self.opponents, self.teammates, ball, self.boost_pads, self.active_strategy, self.controller, self.renderer)
 
 		# Debug Input
+			# Controls (You must have the white pygame window in focus!):
+				# x: Toggle taking control of Botato.
+				# WASD to move, Space to jump, Numpad Enter to boost, Left Shift to Powerslide/Air Roll.
+				# Ctrl+S/Ctrl+L to save/load game state.
+				# Numpad 0-9 to load trainings.
+
+			keyboard.update()
+
 			# Take control of Botato
-			if(keyboard.toggles['x'] or True):
+			if(keyboard.toggles['x']):
 				self.controller.throttle = keyboard.key_down("w") - keyboard.key_down("s")
 				self.controller.pitch = -self.controller.throttle
 
@@ -381,13 +464,16 @@ class Botato(BaseAgent):
 				self.saved_state = GameState.create_from_gametickpacket(packet)
 			if(keyboard.key_down("left ctrl") and keyboard.key_down("l")):
 				self.set_game_state(self.saved_state)
+			# Reset current training, without changing randomization.
+			if(keyboard.key_down("r")):
+				self.training.reset()
 			# Activate a Training
 			if(keyboard.key_down("[0]")):
-				Training(self, "Diagonal Kickoff")
+				self.training = Training(self, "Diagonal Kickoff")
 			elif(keyboard.key_down("[1]")):
-				Training(self, "Straight Kickoff")
+				self.training = Training(self, "Straight Kickoff")
 			elif(keyboard.key_down("[2]")):
-				Training(self, "Prediction 1")
+				self.training = Training(self, "Prediction 1")
 
 
 		# Debug Render - only for index==0 car.

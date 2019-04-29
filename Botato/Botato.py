@@ -3,9 +3,10 @@ import math, colorsys, random, copy
 
 # My own packages/classes/garbage(TODO clean this shit up, stop importing functions and variables directly, it's ugly af.)
 from Unreal import Rotator
-from Unreal import MyVec3 as vec3
+from Unreal import MyVec3 as MyVec3
 from Objects import *
 from Utils import *
+from Training import *
 import Debug
 import Preprocess
 from keyboard_input import keyboard
@@ -13,6 +14,7 @@ from keyboard_input import keyboard
 # RLBot
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
+from rlbot.utils.game_state_util import GameState
 
 # RLUtilities
 from rlutilities.simulation import Ball, Field, Game, ray
@@ -50,12 +52,12 @@ class Strategy:
 	bias_boost = 0.0			# How desparately this strategy requires boost.
 	bias_bump = 0.0				# How flexible this strategy is to bumping.
 	viability = 0				# Stores the result of evaluate().
-	target = vec3(0, 0, 0)
+	target = MyVec3(0, 0, 0)
 	desired_speed = 2300
 	"""
 	@property
 	def target(self):
-		return = vec3(0, 0, 0)	# Stores the target location of this strategy.
+		return = MyVec3(0, 0, 0)	# Stores the target location of this strategy.
 	
 	@target.setter:
 	"""	
@@ -209,9 +211,9 @@ class Strat_HitBallTowardsNet(Strategy):
 		# TODO tbqh in this situation this Strategy shouldn't even be the active one, keep that in mind for future. (ie. this part can probably be removed later)
 		if(car_enemy_goal_dist < goal_ball_dist):
 			if(yaw_car_to_enemy_goal > 90):
-				cls.target += vec3(300, 0, 0)
+				cls.target += MyVec3(300, 0, 0)
 			elif(yaw_car_to_enemy_goal < -90):
-				cls.target += vec3(-300, 0, 0)
+				cls.target += MyVec3(-300, 0, 0)
 
 		car.cs_on_ground(cls.target, controller)
 
@@ -238,10 +240,10 @@ class Strat_MoveToRandomPoint(Strategy):
 		car_target_dist = (car.location - target_obj.location).size
 
 		if(car_target_dist < 200 or cls.target.x==0):
-			arena = vec3(8200*.9, 10280*.9, 2050*0.1)
-			random_point = vec3( (random.random()-0.5) * arena.x, (random.random()-0.5) * arena.y, 100 )
-			# goal1 = vec3( 1, arena.y*0.4, 17)
-			# random_point = vec3( 1, -arena.y*0.4, 17)
+			arena = MyVec3(8200*.9, 10280*.9, 2050*0.1)
+			random_point = MyVec3( (random.random()-0.5) * arena.x, (random.random()-0.5) * arena.y, 100 )
+			# goal1 = MyVec3( 1, arena.y*0.4, 17)
+			# random_point = MyVec3( 1, -arena.y*0.4, 17)
 			# if(random.random()>0.5):
 			# 	random_point=goal1
 			
@@ -286,10 +288,10 @@ class Botato(BaseAgent):
 		# Debug toggles
 		self.debug_strats = 		False
 		self.debug_controls = 		True
-		self.debug_dodge = 		False
+		self.debug_dodge = 			False
 		self.debug_prediction = 	False
 		self.debug_car = 			True
-		self.debug_ball = 			False
+		self.debug_ball = 			True
 		self.debug_target = 		True
 		
 		self.active_strategy = Strat_Kickoff
@@ -302,7 +304,7 @@ class Botato(BaseAgent):
 		self.distance_from_target = 1
 
 		# Throttle
-		self.acceleration = vec3(0,0,0)
+		self.acceleration = MyVec3(0,0,0)
 		self.throttle_accel = 0
 
 		# Dodging
@@ -310,7 +312,7 @@ class Botato(BaseAgent):
 		self.dodged = False
 		self.last_jump = 1				# Time of our last jump (Time of our last dodge is not stored currently)
 		#temp
-		self.last_jump_loc = vec3(0,0,0)
+		self.last_jump_loc = MyVec3(0,0,0)
 		
 		# Powersliding
 		self.powersliding = False
@@ -318,9 +320,9 @@ class Botato(BaseAgent):
 		self.last_powerslide_ended = 0
 
 		# Car values
-		self.location = vec3(0, 0, 0)
+		self.location = MyVec3(0, 0, 0)
 		self.rotation = Rotator()
-		self.velocity = vec3(0, 0, 0)
+		self.velocity = MyVec3(0, 0, 0)
 		
 		self.speed = 0
 		self.boost = 0
@@ -328,6 +330,7 @@ class Botato(BaseAgent):
 		self.wheel_contact = True
 		self.wheel_contact_old = True	# The state of wheel_contact in the previous tick.
 		self.last_wheel_contact = 0		# Last time when wheel_contact has changed.
+		self.saved_state = None			# For saving and loading states.
 
 		# Other entities
 		#TODO These shouldn't be stored in self, just like how the ball isn't. self==things belonging to the car.
@@ -360,7 +363,7 @@ class Botato(BaseAgent):
 
 		# Debug Input
 			# Take control of Botato
-			if(keyboard.toggles['x']):
+			if(keyboard.toggles['x'] or True):
 				self.controller.throttle = keyboard.key_down("w") - keyboard.key_down("s")
 				self.controller.pitch = -self.controller.throttle
 
@@ -371,9 +374,21 @@ class Botato(BaseAgent):
 				else:
 					self.controller.yaw = self.controller.steer
 
-
 				self.controller.jump = keyboard.key_down("space")
 				self.controller.boost = keyboard.key_down("enter")
+			# Save/Load State
+			if(keyboard.key_down("left ctrl") and keyboard.key_down("s")):
+				self.saved_state = GameState.create_from_gametickpacket(packet)
+			if(keyboard.key_down("left ctrl") and keyboard.key_down("l")):
+				self.set_game_state(self.saved_state)
+			# Activate a Training
+			if(keyboard.key_down("[0]")):
+				Training(self, "Diagonal Kickoff")
+			elif(keyboard.key_down("[1]")):
+				Training(self, "Straight Kickoff")
+			elif(keyboard.key_down("[2]")):
+				Training(self, "Prediction 1")
+
 
 		# Debug Render - only for index==0 car.
 			if(self.index==0):
@@ -442,7 +457,7 @@ class Botato(BaseAgent):
 
 			dodge_steering_threshold = 0.51
 			dodge_speed_threshold = 1000
-			speed_toward_target_ratio = speed_toward_target / (self.speed+0.0000001)
+			speed_toward_target_ratio = 0 if self.speed==0 else speed_toward_target / self.speed
 			speed_toward_target_ratio_threshold = 0.97
 			dodge_duration = 1.3	# Rough expected duration of a dodge.
 			dodge_distance = min(self.speed+500, 2299) * dodge_duration		# Expected dodge distance based on our current speed. (Dodging adds 500 to our speed)
@@ -526,7 +541,7 @@ class Botato(BaseAgent):
 
 			base_accel = self.dt * self.throttle_accel
 			boost_accel = self.dt * ACCEL_BOOST
-			time_to_reach = distance_now.size/self.speed
+			time_to_reach = 0 if self.speed==0 else distance_now.size/self.speed
 			#print(time_to_reach)
 			#print(self.throttle_accel)
 
@@ -546,13 +561,13 @@ class Botato(BaseAgent):
 			else:
 				controller.boost=False
 
-	def raycast(self, loc1, loc2, debug=True) -> vec3:
+	def raycast(self, loc1, loc2, debug=True) -> MyVec3:
 		"""Wrapper for easy raycasting against the field's geo."""
 		"""Casts a ray from loc1 to loc2. Returns a Vector3 of where the line intersected the field. Returns loc1 if didn't intersect."""
 		# TODO: the default behaviour of raycasting from a start position towards a vector(rather than from A to B) is useful too, maybe add a flag param to switch to that behavior.
 
-		loc1 = vec3(loc1)
-		loc2 = vec3(loc2)
+		loc1 = MyVec3(loc1)
+		loc2 = MyVec3(loc2)
 		difference = loc2 - loc1
 		
 		my_ray = ray(loc1, difference)
@@ -561,13 +576,13 @@ class Botato(BaseAgent):
 		
 		if(str(my_raycast.start) == str(ray_end)):
 			# If the raycast didn't intersect with anything, return the target location.
-			return vec3(loc1)
+			return MyVec3(loc1)
 		if(debug or self.debug_target):
 			self.renderer.draw_rect_3d(my_raycast.start, 20, 20, True, self.renderer.lime())
 			Debug.line_2d_3d(self, my_raycast.start, loc1, color=self.renderer.red(), draw_2d=False)
 			Debug.line_2d_3d(self, my_raycast.start, loc2, color=self.renderer.lime(), draw_2d=False)
 
-		return vec3(my_raycast.start)
+		return MyVec3(my_raycast.start)
 
 class Maneuver():	# TODO we could just extend SimpleControllerState so we can just set self.handbrake instead of self.controller.handbrake. Idk.
 	"""Base class for maneuvers. Maneuvers are used by ControllerStates to get to a point in a specific way."""
@@ -600,7 +615,7 @@ class Powerslide(Maneuver):
 			and time.time() - cls.last_slide_start > cls.slide_gap
 		):		# Calculate requirements to begin and end the powerslide.
 			delta_yaw = abs((car.yaw_car_to_target - car.last_self.yaw_car_to_target))*(1/car.dt)							# How fast we are approaching the correct alignment, in degrees/sec
-			time_to_aligned = car.yaw_car_to_target / (delta_yaw+0.00000001)													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
+			time_to_aligned = -1 if delta_yaw==0 else car.yaw_car_to_target / delta_yaw													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
 		
 			# TODO: The begin threshold will need to go even lower, the faster we are going. This might still be prone to orbiting.
 			cls.threshold_begin_slide_angle = 40

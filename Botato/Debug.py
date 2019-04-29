@@ -145,13 +145,11 @@ def analogue_stick(car, x, y, size=300, color_stick=None, color_bg=None):
 
 def render_all(car):
 	# Boost locations
-		#print(type(car.boost_locations[0].location))
-		boost_locations = [MyVec3(l.location.x, l.location.y, 50) for l in car.boost_locations]
-		for i, boost_loc in enumerate(boost_locations):
-			#if(i<49):
-			#	vector_2d_3d(car, boost_locations[i], boost_locations[i+1])
-			color = car.renderer.red() if not car.boost_pads[i].is_active else None
-			shitty_3d_rectangle(car, MyVec3(boost_loc), color=color)
+		if(False):
+			boost_locations = [MyVec3(l.location.x, l.location.y, 50) for l in car.boost_locations]
+			for i, boost_loc in enumerate(boost_locations):
+				color = car.renderer.red() if not car.boost_pads[i].is_active else None
+				shitty_3d_rectangle(car, MyVec3(boost_loc), color=color)
 
 	# Render target (line and square)
 		if(car.debug_target):
@@ -169,7 +167,7 @@ def render_all(car):
 			text_2d(car, 10, 240, "Yaw to target: " + str(int(car.yaw_car_to_target)))
 			text_2d(car, 10, 270, "Distance from target: " + str(int(car.distance_from_target)))
 			
-			time_to_reach = distance(car.location, car.active_strategy.target).size/car.speed
+			time_to_reach = -1 if car.speed==0 else distance(car.location, car.active_strategy.target).size/car.speed
 			text_2d(car, 10, 300, "Time till arrival: " + str(time_to_reach))
 
 	# Render prediction (hue indicates dt, red=near future, blue=distant future)
@@ -183,19 +181,21 @@ def render_all(car):
 				
 	# Render Car Transforms
 		vec2str = lambda vec: str(int(vec.x)) + " " + str(int(vec.y)) + " " + str(int(vec.z))
+		rot2str = lambda rot: str(int(rot.pitch*1000)) + " " + str(int(rot.yaw*1000)) + " " + str(int(rot.roll*1000))
 		if(car.debug_car):
 			text_2d(car, 1400, 10, "Car Loc: " + vec2str(car.location) )
 			text_2d(car, 1400, 40, "Car Vel: " + vec2str(car.velocity) )
-			text_2d(car, 1273, 70, "Local Car Vel: " + vec2str(local_coords(car, car.velocity)) )
-			text_2d(car, 1400, 100, "Car Spd: " + str(int(car.velocity.length)) )
-			text_2d(car, 1400, 130, "Des Spd: " + str(int(car.active_strategy.desired_speed)) )
+			text_2d(car, 1400, 70, "Car Rot: " + rot2str(car.rotation) )
+			text_2d(car, 1273, 100, "Local Car Vel: " + vec2str(local_coords(car, car.velocity)) )
+			text_2d(car, 1400, 130, "Car Spd: " + str(int(car.velocity.length)) )
+			text_2d(car, 1400, 160, "Des Spd: " + str(int(car.active_strategy.desired_speed)) )
 
-			text_2d(car, 1400, 160, "Car AV: " + vec2str(car.av*1000))
+			text_2d(car, 1400, 190, "Car AV: " + vec2str(car.av*1000))
 	# Render Ball Transforms
 		if(car.debug_ball):
-			text_2d(car, 1500, 150, "Ball Loc: " + vec2str(ball.location))
-			text_2d(car, 1500, 180, "Ball Vel: " + vec2str(ball.velocity))
-			text_2d(car, 1500, 210, "Ball Spd: " + str(int(ball.velocity.length)))
+			text_2d(car, 1400, 300, "Ball Loc: " + vec2str(ball.location))
+			text_2d(car, 1400, 330, "Ball Vel: " + vec2str(ball.velocity))
+			text_2d(car, 1400, 360, "Ball Spd: " + str(int(ball.velocity.length)))
 
 	# Render Strategies
 		if(car.debug_strats):

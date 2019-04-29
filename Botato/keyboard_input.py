@@ -1,7 +1,5 @@
-
 import pygame
-
-# By GooseFairy https://discordapp.com/channels/348658686962696195/348658686962696196/570442556526034995
+# Shoutout to GooseFairy https://discordapp.com/channels/348658686962696195/348658686962696196/570442556526034995
 class gui:
 	def __init__(self):
 		pygame.init()
@@ -12,7 +10,6 @@ class gui:
 		self.white = (255,255,255)
 		self.buttons = dict()
 		self.toggles = dict()
-		self.functions = dict()
 		self.cur = 0
 	
 	def key_down(self, key_name):
@@ -33,6 +30,7 @@ class gui:
 		for event in pygame.event.get():
 			if event.type in (pygame.KEYDOWN, pygame.KEYUP):
 				name = pygame.key.name(event.key)
+				# https://www.pygame.org/docs/ref/key.html
 				if(event.type == pygame.KEYDOWN):
 					print(name)
 					if(name in self.toggles.keys()):				# Toggles

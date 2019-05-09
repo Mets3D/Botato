@@ -1,9 +1,12 @@
+""" Previously on botato...
+	I started realizing that hitting a predicted ball seems incredibly complicated. I don't even understand how Botimus fucking does it. I'm done, I want to die.
+	"""
+
 # Python built-ins
 import math, colorsys, random, copy
 
 # My own packages/classes/garbage(TODO clean this shit up, stop importing functions and variables directly, it's ugly af.)
-from Unreal import Rotator
-from Unreal import MyVec3 as MyVec3
+from Unreal import Rotator, MyVec3
 from Objects import *
 from Utils import *
 from Training import *
@@ -14,11 +17,12 @@ from keyboard_input import keyboard
 # RLBot
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
-from rlbot.utils.game_state_util import GameState
+from rlbot.utils.game_state_util import GameState, GameInfoState
 
 # RLUtilities
 from rlutilities.simulation import Ball, Field, Game, ray
 
+# TODO these utility functions should be moved to Utils.
 def find_nearest(objs, obj):
 	"""Find object in objs that is nearest to obj."""
 	"""They need to have a .location.x/y/z."""
@@ -54,10 +58,18 @@ def reachable(car, location, time_left):
 	
 	# TODO: do some really fancy stuff to correctly calculate how fast we can get there. The more accurate this function is, the sooner Botato might be able to go for the ball. Of course as long as we are only hitting ground balls, it doesn't really matter.
 	speed = 1400 if car.boost < 30 else 2300	# Good enough for Botimus, good enough for me.
-	ground_loc = MyVec3(location.x, location.z, 93)
-	dist = distance(car.location, ground_loc)
-	minimum_speed_to_reach = dist / time_left
+	ground_loc = MyVec3(location.x, location.z, 120)
+	dist = distance(car.location, ground_loc).size
+	minimum_speed_to_reach = dist / (time_left+0.0000001)
 	return minimum_speed_to_reach < speed
+
+def find_soonest_reachable(car, prediction):
+	""" Find soonest reachable ball """
+	for ps in prediction.slices:
+		dt = ps.game_seconds - car.game_seconds
+		is_reachable = reachable(car, ps.physics.location, dt)
+		if(is_reachable):
+			return [ps, dt]
 
 def optimal_speed(dist, time_left, current_speed):
 	# In its current state this is straight from Botimus. Idk what Alpha is for, I guess an overspeeding factor to account for the imprecise reachable(). Better to get there too soon and park than to not get there in time. Still, not ideal.
@@ -66,9 +78,34 @@ def optimal_speed(dist, time_left, current_speed):
     alpha = 1.3
     return  alpha * desired_speed - (alpha - 1) * current_speed
 
+def distance_to_time(distance, initial_speed, acceleration):
+	""" Calculate time it would take to move distance amount with an initial speed and a constant acceleration. Does not take into account turning or anything along those lines. """
+	# Also, acceleration is rarely constant, and when it is, it's 0. So that's pretty gay. I wonder how I'm gonna work around that, cause I have no clue.
+	eta = quadratic(acceleration, initial_speed, distance, positive_only=True)
+	if(eta):
+		return eta[0]
+
+def raycast(loc1, loc2, debug=True) -> MyVec3:
+	"""Wrapper for easy raycasting against the field's geo."""
+	"""Casts a ray from loc1 to loc2. Returns the location of where the line intersected the field. Returns loc1 if didn't intersect."""
+	# TODO: the default behaviour of raycasting from a start position towards a vector(rather than from A to B) will be useful too, maybe add a flag param to switch to that behavior.
+
+	loc1 = MyVec3(loc1)
+	loc2 = MyVec3(loc2)
+	difference = loc2 - loc1
+	
+	my_ray = ray(loc1, difference)
+	ray_end = loc1 + difference
+	my_raycast = Field.raycast_any(my_ray)
+	
+	if(str(my_raycast.start) == str(ray_end)):
+		# If the raycast didn't intersect with anything, return the target location.
+		return loc1
+
+	return MyVec3(my_raycast.start)
 
 class Strategy:
-	"""Base Class for Strategies. Currently, inheriting is not used for much."""
+	""" Base Class for Strategies. """
 	
 	# Class Variables
 	name = "StrategyName"
@@ -77,6 +114,7 @@ class Strategy:
 	viability = 0				# Stores the result of evaluate().
 	target = MyVec3(0, 0, 0)
 	desired_speed = 2300
+	path = [MyVec3(0, 0, 0)]
 	"""
 	@property
 	def target(self):
@@ -85,59 +123,23 @@ class Strategy:
 	@target.setter:
 	"""	
 
+	# TODO: both of the below methods should only take car as their parameter, but rename it to "agent". It should include everything else, even the ball.
 	@classmethod
 	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
 		"""Return how good this strategy seems to be right now, 0-1. Tweaking these values can be quite tricky."""
 		viability = 0
 	
 	@classmethod
-	def execute(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
-		"""Determine the controller inputs that execute this strategy at the current tick."""
-		return controller
+	def update_path(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
+		"""Determine the path we want to take to execute the Strategy. The end of the path would usually be the ball, a large boost pad, or our own goal. The rest of the path is usually small boost pads, or target locations that we want to reach in order to line up for a desired ball touch."""
+		# TODO: for now, strategy should be responsible for picking sub-targets like boost and goalpost avoidance, but in the future that could be moved outside of strategies, since it should be the same logic for any strategy.
+		cls.path = []
 
-class Strat_Kickoff(Strategy):
-	"""Currently just calls HitBall, but I'll customize it in the future. Wavedash kickoff ftw."""
-	name = "Kickoff"
-	bias_boost = 0.2
-	bias_bump = 0.0
-	
 	@classmethod
-	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
-		if( ball.location.x == 0 and ball.location.y==0 ):
-			cls.viability=1
-		else:
-			cls.viability=0
-	
-	@classmethod
-	def execute(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
-		return Strat_HitBall.execute(car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer)
-		
-class Strat_BoostGrab(Strategy):
-	name = "Boost Grab"
-	bias_boost = -1
-	bias_bump = 0.1
-
-class Strat_HitBall(Strategy):
-	"""Temporary dumb strategy to just steer towards the ball at full throttle, boost if far away, and dodge into it if close enough."""
-	
-	name = "Hit Ball"
-	bias_boost = 0.6
-	bias_bump = 0.6
-	
-	@classmethod
-	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
-		cls.viability=0.99
-	
-	@classmethod
-	def execute(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
-		controller.jump = False
-		controller.throttle = 1
-		
-		ball_loc = ball.location
-		
-		car.cs_on_ground(ball_loc, controller)
-
-		return controller
+	def execute(cls, car):
+		""" Choose a ControllerState and run it. """
+		#return car.cs_on_ground(car, cls.path[0], car.controller, 2300)
+		return None
 
 class Strat_Shooting(Strategy):
 	"""Shoot the ball towards the enemy net. WIP for future non-temp strat."""
@@ -189,60 +191,9 @@ class Strat_Shooting(Strategy):
 			cls.viability=0
 	
 	@classmethod
-	def execute(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
+	def update_path(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
 		# TODO: Angle shooting logic...
-		return Strat_HitBall.execute(car, teammates, opponents, ball, boost_pads, active_strategy, controller)
-
-class Strat_HitBallTowardsNet(Strategy):
-	"""Temporary dumb strategy to move the ball towards the enemy goal."""
-	
-	name = "Hit Ball Towards Net"
-	bias_boost = 0.6
-	bias_bump = 0.6
-	
-	@classmethod
-	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
-		cls.viability=0.99
-	
-	@classmethod
-	def execute(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
-		controller.throttle = 1
-
-		car_ball_dist = distance(car, ball)
-		goal_ball_dist = distance(car.enemy_goal, ball)
-		car_enemy_goal_dist = distance(car, car.enemy_goal)
-		# We project a line from the goal towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
-		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the enemy goal) the ball.
-		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
-		goal_ball_vec = car.enemy_goal.location - ball.location
-		ball_dist_ratio = car_ball_dist/goal_ball_dist
-		Debug.text_2d(car, 1000, 800, str(ball_dist_ratio))
-		desired_distance_from_ball = car_ball_dist/2
-		
-		car.location - car.enemy_goal.location
-		
-		cls.target = ball.location - (goal_ball_vec.normalized * desired_distance_from_ball)
-
-		# TODO Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
-		# TODO could also aim at the opposite corner of the net rather than the center.
-
-		# Avoid hitting towards our own net.
-		yaw_car_to_enemy_goal = get_yaw_relative(car.location.x, car.location.y, car.enemy_goal.location.x, car.enemy_goal.location.y, car.rotation.yaw)
-		Debug.text_2d(car, 600, 200, "angle to enemy goal: " + str(yaw_car_to_enemy_goal))
-		# If we are between the ball and the enemy goal(ie. the wrong side of the field)
-		# TODO: Instead of a binary result if, make this more dynamic.if(car_enemy_goal_dist < car_ball_dist):
-		# TODO tbqh in this situation this Strategy shouldn't even be the active one, keep that in mind for future. (ie. this part can probably be removed later)
-		if(car_enemy_goal_dist < goal_ball_dist):
-			if(yaw_car_to_enemy_goal > 90):
-				cls.target += MyVec3(300, 0, 0)
-			elif(yaw_car_to_enemy_goal < -90):
-				cls.target += MyVec3(-300, 0, 0)
-
-		car.cs_on_ground(cls.target, controller)
-
-		super().execute(car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer)
-		
-		return controller
+		return Strat_HitBall.update_path(car, teammates, opponents, ball, boost_pads, active_strategy, controller)
 
 class Strat_HitBallTowardsNet2(Strategy):
 	"""Temporary dumb strategy to move the ball towards the enemy goal."""
@@ -257,44 +208,63 @@ class Strat_HitBallTowardsNet2(Strategy):
 		cls.viability=0.99
 	
 	@classmethod
-	def execute(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
-		controller.throttle = 1
+	def update_path(cls, car):
+		
+		soonest_reachable = find_soonest_reachable(car, car.ball_prediction)
+		predicted_ball = soonest_reachable[0]
+		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
+		dist = distance(car.location, predicted_ball.physics.location).size
+		#desired_speed = optimal_speed(dist, dt, car.speed)
+		
+		# Change desired speed so that when dt is higher, make it lower, and when it's lower, make it higher??
+		desired_speed = dist / max(0.01, dt)
+		desired_speed = desired_speed * (3-dt)
 
-		car_ball_dist = distance(car, ball)
-		goal_ball_dist = distance(car.enemy_goal, ball)
-		car_enemy_goal_dist = distance(car, car.enemy_goal)
+		# Let's just say we want to accelerate about 2 seconds before we reach target, and we have a constant acceleration(or average acceleration).
+		average_accel = 1000
+		# We want to apply this acceleration when we get this close to the target
+		#distance_until_start_acceleration = quadratic()
+
+		
+		desired_speed_at_target = 2300	# This would be calculated based on what we want to do with the ball(shoot it, dribble it, etc) - It could also be set to -1 when the desired speed is not important, or something, idk.
+
+		time_required_to_reach_target_speed = desired_speed_at_target - car.speed / average_accel # Time it would take to accelerate from our current speed to the desired impact speed
+
+		if(dt > 3):
+			desired_speed = 1300
+		else:
+			desired_speed = 2300
+
+		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
+		
+		return car.cs_on_ground(predicted_ball.physics.location, car.controller, desired_speed)
+
+		car_ball_dist = distance(car, ball).size
+		goal_ball_dist = distance(car.enemy_goal, ball).size
+		car_enemy_goal_dist = distance(car, car.enemy_goal).size
 		# We project a line from the goal towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
 		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the enemy goal) the ball.
 		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
 		goal_ball_vec = car.enemy_goal.location - ball.location
 		ball_dist_ratio = car_ball_dist/goal_ball_dist
-		Debug.text_2d(car, 1000, 800, str(ball_dist_ratio))
 		desired_distance_from_ball = car_ball_dist/2
 		
 		car.location - car.enemy_goal.location
 		
 		cls.target = ball.location - (goal_ball_vec.normalized * desired_distance_from_ball)
+		cls.target[2]=17
+		target_obj = GameObject()
+		target_obj.location = raycast(cls.target, ball.location)
 
 		# TODO Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
 		# TODO could also aim at the opposite corner of the net rather than the center.
+		# TODO avoid hitting ball into our own net, but probably don't do this inside this strategy. Instead, in those situations, this shouldn't be the active strategy to begin with.
 
-		# Avoid hitting towards our own net.
-		yaw_car_to_enemy_goal = get_yaw_relative(car.location.x, car.location.y, car.enemy_goal.location.x, car.enemy_goal.location.y, car.rotation.yaw)
-		Debug.text_2d(car, 600, 200, "angle to enemy goal: " + str(yaw_car_to_enemy_goal))
-		# If we are between the ball and the enemy goal(ie. the wrong side of the field)
-		# TODO: Instead of a binary result if, make this more dynamic.if(car_enemy_goal_dist < car_ball_dist):
-		# TODO tbqh in this situation this Strategy shouldn't even be the active one, keep that in mind for future. (ie. this part can probably be removed later)
-		if(car_enemy_goal_dist < goal_ball_dist):
-			if(yaw_car_to_enemy_goal > 90):
-				cls.target += MyVec3(300, 0, 0)
-			elif(yaw_car_to_enemy_goal < -90):
-				cls.target += MyVec3(-300, 0, 0)
-
-		car.cs_on_ground(cls.target, controller)
-
-		super().execute(car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer)
-		
-		return controller
+		return car.cs_on_ground(cls.target, car.controller, 2300)
+	
+	@classmethod
+	def execute(cls, car):
+		return cls.update_path(car)
 
 class Strat_MoveToRandomPoint(Strategy):
 	"""Strategy for testing general movement, without having to worry about picking the target location correctly."""
@@ -308,9 +278,12 @@ class Strat_MoveToRandomPoint(Strategy):
 		cls.viability=1.1
 	
 	@classmethod
-	def execute(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
+	def update_path(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
 		target_obj = GameObject()
 		target_obj.location = car.raycast(cls.target, ball.location)
+
+		prediction = car.ball_prediction
+
 
 		car_target_dist = (car.location - target_obj.location).size
 
@@ -324,6 +297,10 @@ class Strat_MoveToRandomPoint(Strategy):
 			
 			# Pick a speed with which we want to get there. (In the future this would be calculated based on the prediction of how far in time(da future) the ball is going to be where we need it to be)
 			cls.desired_speed = 500+random.random()*1800
+			dist = distance(car.location, random_point).size
+			car.ETA = distance_to_time(ACCEL_BOOST, dist, car.speed)
+			car.start_time = time.time()
+
 			#cls.desired_speed = 1300
 			#print("desired speed: " + str(cls.desired_speed))
 			
@@ -332,15 +309,12 @@ class Strat_MoveToRandomPoint(Strategy):
 			pass
 
 		car.cs_on_ground(target_obj.location, controller, cls.desired_speed)
-		super().execute(car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer)
+		super().update_path(car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer)
 		return controller
 
-strategies = [Strat_Kickoff,
-	#Strat_BoostGrab,
-	Strat_HitBallTowardsNet,
-	#Strat_Retreat,
-	Strat_MoveToRandomPoint,
-	#Strat_Bump,
+strategies = [
+	Strat_HitBallTowardsNet2,
+	#Strat_MoveToRandomPoint,
 	#Strat_Shooting,
 	#Strat_Saving,
 	#Strat_Clearing,
@@ -350,6 +324,10 @@ class Botato(BaseAgent):
 	def __init__(self, name, team, index):
 		super().__init__(name, team, index)
 		
+		#Debug values updated by MoveToRandomPoint, for now.
+		self.ETA = 0				# Time estimated that it will take us to get to target
+		self.start_time = 0			# Time when we start going towards current target
+
 		# RLBot
 		self.controller = SimpleControllerState()
 		self.ball_prediction = None
@@ -363,20 +341,12 @@ class Botato(BaseAgent):
 		self.training = None
 		self.saved_state = None			# For saving and loading states.
 
-		# Debug toggles
-		self.debug_strats = 		False
-		self.debug_controls = 		True
-		self.debug_dodge = 			False
-		self.debug_prediction = 	True
-		self.debug_car = 			True
-		self.debug_ball = 			True
-		self.debug_target = 		True
-
-		self.active_strategy = Strat_Kickoff
+		self.active_strategy = Strat_HitBallTowardsNet2
 
 		self.time_old = 1
 		self.dt = 1
 		self.last_self = None			# For storing the previous tick packet. Useful for getting deltas.
+		self.game_seconds = 0
 
 		self.yaw_car_to_target = 1
 		self.distance_from_target = 1
@@ -434,7 +404,7 @@ class Botato(BaseAgent):
 				if(s.viability > self.active_strategy.viability):
 					self.active_strategy = s
 			
-			self.controller = self.active_strategy.execute(self, self.opponents, self.teammates, ball, self.boost_pads, self.active_strategy, self.controller, self.renderer)
+			self.active_strategy.execute(self)
 
 		# Debug Input
 			# Controls (You must have the white pygame window in focus!):
@@ -474,7 +444,21 @@ class Botato(BaseAgent):
 				self.training = Training(self, "Straight Kickoff")
 			elif(keyboard.key_down("[2]")):
 				self.training = Training(self, "Prediction 1")
-
+			# Change Game Speed
+			if(keyboard.key_down("left ctrl") and keyboard.key_down("[-]")):
+				#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed-0.1)
+				game_info_state = GameInfoState(game_speed=0.5)
+				game_state = GameState(game_info=game_info_state)
+				self.set_game_state(game_state)
+				#print("Slowing to " + str(packet.game_info.game_speed-0.1))
+				print("Slowing to 0.5")
+			if(keyboard.key_down("left ctrl") and keyboard.key_down("[+]")):
+				#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed+0.1)
+				game_info_state = GameInfoState(game_speed=1)
+				game_state = GameState(game_info=game_info_state)
+				self.set_game_state(game_state)
+				#print("Speeding to " + str(packet.game_info.game_speed+0.1))
+				print("Speeding to 1")
 
 		# Debug Render - only for index==0 car.
 			if(self.index==0):
@@ -495,18 +479,17 @@ class Botato(BaseAgent):
 			
 			# Speed toward target
 			self.distance_from_target = (self.location - target).length
-			velocity_at_car = (self.location + self.velocity/120)		# per tick, rather than per second. Feels like it shouldn't matter, but I guess it does. TODO still not really sure if this maths is correct, but I'm pretty sure it does what I wanted it to.
+			velocity_at_car = (self.location + self.velocity/120)		# per tick, rather than per second. Feels like it shouldn't matter, but I guess it does. TODO still not really sure if this is the right way to do this, but it does what I wanted it to.
 			distance_now = distance(self.location, target)
 			distance_next = distance(velocity_at_car, target)
 			speed_toward_target = (distance_now.size - distance_next.size) * 120
-			Debug.text_2d(self, 10, 200, "Speed toward target: " + str(speed_toward_target))
-		
+
 		# Powersliding
 			powerslide = Powerslide.get_output(self, self.active_strategy.target)
 			self.controller.handbrake = powerslide.handbrake# or powerslide1.handbrake
 
 		# Throttle
-			# TODO: powersliding has better results in certain situations with throttle=0 or throttle=1. Figure out when.
+			# TODO: powersliding has different results in certain situations with throttle=0 or throttle=1. Would those be useful?
 			# TODO: sometimes we might want to reverse? But really only to half-flip, which we can't do yet. Even if we learn it, sometimes we might want to drive backwards into the ball and only half-flip when we get there.
 			if(
 				abs(self.yaw_car_to_target) > 40	# This number should be some function of distance from target?
@@ -627,9 +610,6 @@ class Botato(BaseAgent):
 
 			base_accel = self.dt * self.throttle_accel
 			boost_accel = self.dt * ACCEL_BOOST
-			time_to_reach = 0 if self.speed==0 else distance_now.size/self.speed
-			#print(time_to_reach)
-			#print(self.throttle_accel)
 
 			if(	 													# When do we want to boost?
 				controller.handbrake == False						# We are not powersliding (TODO: We might actually want to boost in the beginning (and/or end) of powersliding.)
@@ -647,29 +627,6 @@ class Botato(BaseAgent):
 			else:
 				controller.boost=False
 
-	def raycast(self, loc1, loc2, debug=True) -> MyVec3:
-		"""Wrapper for easy raycasting against the field's geo."""
-		"""Casts a ray from loc1 to loc2. Returns a Vector3 of where the line intersected the field. Returns loc1 if didn't intersect."""
-		# TODO: the default behaviour of raycasting from a start position towards a vector(rather than from A to B) is useful too, maybe add a flag param to switch to that behavior.
-
-		loc1 = MyVec3(loc1)
-		loc2 = MyVec3(loc2)
-		difference = loc2 - loc1
-		
-		my_ray = ray(loc1, difference)
-		ray_end = loc1 + difference
-		my_raycast = Field.raycast_any(my_ray)
-		
-		if(str(my_raycast.start) == str(ray_end)):
-			# If the raycast didn't intersect with anything, return the target location.
-			return MyVec3(loc1)
-		if(debug or self.debug_target):
-			self.renderer.draw_rect_3d(my_raycast.start, 20, 20, True, self.renderer.lime())
-			Debug.line_2d_3d(self, my_raycast.start, loc1, color=self.renderer.red(), draw_2d=False)
-			Debug.line_2d_3d(self, my_raycast.start, loc2, color=self.renderer.lime(), draw_2d=False)
-
-		return MyVec3(my_raycast.start)
-
 class Maneuver():	# TODO we could just extend SimpleControllerState so we can just set self.handbrake instead of self.controller.handbrake. Idk.
 	"""Base class for maneuvers. Maneuvers are used by ControllerStates to get to a point in a specific way."""
 	controller = SimpleControllerState()
@@ -679,12 +636,14 @@ class Maneuver():	# TODO we could just extend SimpleControllerState so we can ju
 		return cls.controller
 
 class Powerslide(Maneuver):
-	"""Two separate yaw thresholds, one for starting and one for ending the powerslide, both are dynamic and based on a shitload of factors that can be tweaked."""
+	"""Two separate yaw thresholds, one for starting and one for ending the powerslide, both are dynamic and based on a bunch of factors that can be tweaked."""
+	# TODO this is still not very good.
+
 	active = False
 	threshold_begin_slide_angle = 90	# decrease this based on speed or whatever.
 	threshold_end_slide_angle = 25		# increase this based on speed or whatever.
 	last_slide_start = 0
-	slide_gap = 1						# Time that has to pass before reactivating.
+	slide_gap = 1						# Time that has to pass before reactivating. TODO does this work?
 
 	@classmethod
 	def get_output(cls, car, target) -> SimpleControllerState:
@@ -696,13 +655,11 @@ class Powerslide(Maneuver):
 		else:		# Step 3 - Finish powersliding
 			cls.controller.handbrake = False
 			cls.active=False
+
 		if(			# Step 1 - Begin powersliding
 			not cls.active
 			and time.time() - cls.last_slide_start > cls.slide_gap
 		):		# Calculate requirements to begin and end the powerslide.
-			delta_yaw = abs((car.yaw_car_to_target - car.last_self.yaw_car_to_target))*(1/car.dt)							# How fast we are approaching the correct alignment, in degrees/sec
-			time_to_aligned = -1 if delta_yaw==0 else car.yaw_car_to_target / delta_yaw													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
-		
 			# TODO: The begin threshold will need to go even lower, the faster we are going. This might still be prone to orbiting.
 			cls.threshold_begin_slide_angle = 40
 			end_threshold_yaw_factor = 0.6
@@ -716,6 +673,7 @@ class Powerslide(Maneuver):
 			):
 				cls.active=True
 				cls.last_slide_start = time.time()
+				#print("Starting powerslide...")
 				#print("current angle: " + str(abs(car.yaw_car_to_target)))
 				#print("end angle: " + str(cls.threshold_end_slide_angle))
 

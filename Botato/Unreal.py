@@ -41,6 +41,17 @@ class MyVec3(vec3):
 	def z(self):
 		return self[2]
 
+	@x.setter
+	def x(self, val):
+		self[0] = val
+	@y.setter
+	def y(self, val):
+		self[1] = val
+	@z.setter
+	def z(self, val):
+		self[2] = val
+
+
 	@property
 	def length(self):
 		return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)

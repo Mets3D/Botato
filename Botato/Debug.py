@@ -6,6 +6,15 @@ res = (1920, 1080)				# Since the renderer uses pixel coordinates instead of 0-1
 local_ratio = 40				# Divide local coords by this number, in order to fit them on screen. Increasing this will reduce the scale of the debug display, but will not reduce rectangle sizes.
 global_2d_offset = (600, -200)	# Offset all 2D rendering by this amount, from the center of the screen, in RLBot's space. So leaving this as (0,0) will draw everything relative to the center of the screen(as defined by resolution above), whereas setting it to (200, 200) will push it 200px left and 200px down.
 
+# Debug toggles
+debug_strats = 		False
+debug_controls = 	False
+debug_dodge = 		False
+debug_prediction = 	True
+debug_car = 		False
+debug_ball = 		False
+debug_target = 		False
+
 """The main important part in this file is vector_2d_3d() which lets me debug vectors faster and easier, by visualizing them in 2D and 3D with a single function call. (The rest of the functions are just for modularity, and some other stuff.)"""
 
 def ensure_color(r, color=None):
@@ -152,7 +161,7 @@ def render_all(car):
 				shitty_3d_rectangle(car, MyVec3(boost_loc), color=color)
 
 	# Render target (line and square)
-		if(car.debug_target):
+		if(debug_target):
 			# Car / Center of local space
 			rect_2d_local(car, car.location, width=10, height=20, color=car.renderer.orange())
 			
@@ -171,7 +180,7 @@ def render_all(car):
 			text_2d(car, 10, 300, "Time till arrival: " + str(time_to_reach))
 
 	# Render prediction (hue indicates dt, red=near future, blue=distant future)
-		if car.ball_prediction is not None and car.debug_prediction:
+		if car.ball_prediction is not None and debug_prediction:
 			for i in range(0, 330):
 				prediction_slice = car.ball_prediction.slices[i]
 				next_slice = car.ball_prediction.slices[i+1]
@@ -185,7 +194,7 @@ def render_all(car):
 	# Render Car Transforms
 		vec2str = lambda vec: str(int(vec.x)) + " " + str(int(vec.y)) + " " + str(int(vec.z))
 		rot2str = lambda rot: str(int(rot.pitch*1000)) + " " + str(int(rot.yaw*1000)) + " " + str(int(rot.roll*1000))
-		if(car.debug_car):
+		if(debug_car):
 			text_2d(car, 1400, 10, "Car Loc: " + vec2str(car.location) )
 			text_2d(car, 1400, 40, "Car Vel: " + vec2str(car.velocity) )
 			text_2d(car, 1400, 70, "Car Rot: " + rot2str(car.rotation) )
@@ -195,13 +204,13 @@ def render_all(car):
 
 			text_2d(car, 1400, 190, "Car AV: " + vec2str(car.av*1000))
 	# Render Ball Transforms
-		if(car.debug_ball):
+		if(debug_ball):
 			text_2d(car, 1400, 300, "Ball Loc: " + vec2str(ball.location))
 			text_2d(car, 1400, 330, "Ball Vel: " + vec2str(ball.velocity))
 			text_2d(car, 1400, 360, "Ball Spd: " + str(int(ball.velocity.length)))
 
 	# Render Strategies
-		if(car.debug_strats):
+		if(debug_strats):
 			for i, s in enumerate(strategies):
 				color = car.renderer.white()
 				if(s==car.active_strategy):
@@ -210,7 +219,7 @@ def render_all(car):
 				text_2d(car, 10, 30+i*30, strat_string, color=color)
 	
 	# Render Controls
-		if(car.debug_controls):
+		if(debug_controls):
 			# Dimensions
 			ctrl_disp = (20, 650)
 			ctrl_disp_size = 350

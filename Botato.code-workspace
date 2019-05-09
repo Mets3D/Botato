@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "D:\\rlbot\\RLBotGUI\\RLBotPack\\BotimusPrime"
+		},
+		{
+			"path": "D:\\rlbot\\rlutils\\examples"
 		}
 	],
 	"settings": {}

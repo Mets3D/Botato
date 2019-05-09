@@ -40,11 +40,10 @@ class Training():
 		elif(training_name == "Prediction 1"):
 			self.ball_loc = Vector3(2300, 0, 93)
 			self.car_rot = gsu_rot(-0.016, -1.570, 0)
-		
+
 		elif(training_name == "Random Ground"):
 			self.ball_loc = Vector3(random.random()*arena.x*0.8, random.random()*arena.y*0.8, 93)
 			self.car_loc = Vector3(random.random()*arena.x*0.8, random.random()*arena.y*0.8, 18)
-
 		else:
 			print("Invalid training name: " + training_name)
 		

@@ -1,4 +1,4 @@
-import math, time
+import time, cmath, math
 
 from Unreal import Rotator, MyVec3
 from Objects import *
@@ -16,29 +16,46 @@ ACCEL_GRAV = 650
 
 arena = MyVec3(8200, 10280, 2050)
 
-# TODO in general, I feel like there are a bunch of things built into python like math and Vector3 that we are re-implementing for no reason. Try to minimize that at some point.
+def quadratic(a, b, c, positive_only=False) -> list():
+	""" ax^2 + bx + c = 0 """
+	""" x = (-b +/- sqrt(b^2-4ac))/2a """
+	discriminant = math.pow(b, 2) - 4 * a * c
+	if(discriminant < 0):	# TODO idk how complex numbers work but I do know that it's a one way street, so we're forcing the discriminant to be positive and we'll see what happens.
+		discriminant = -discriminant
+	plus = (-b + math.sqrt(discriminant))/2
+	minus = (-b - math.sqrt(discriminant))/2
+	if(positive_only):
+		ret = []
+		if(plus > 0):
+			ret.append(plus)
+		elif(minus > 0):
+			ret.append(minus)
+		return ret
+	return [plus, minus]
 
 def lerp(from_val, to_val, factor, clamp=False):
-	"""linear interpolate between from_val to to_val by factor. A factor of 0.5 if halway between from_val and to_val."""
+	""" Linear interpolate between from_val to to_val by factor. """
 	if(clamp):
 		factor = clamp(factor, 0, 1)
 	return from_val + (to_val-from_val) * factor
 
 def rlerp(from_val, to_val, value):	
-	""" Find factor that would yield value when interpolated from from_val to to_val."""
+	""" Find factor that would yield value when linear interpolated from from_val to to_val. """
 	factor = (value-from_val) / (to_val-from_val)
 	return factor
 
 def multilerp(x, y, value):
-	"""Map a value to a linear segment function, where x and y are lists of equal length"""
+	""" Piecewise linear interpolate value, where x and y are lists of equal length defining points of the curve. """
 	if(type(x)!=list or type(y)!=list):return
 	if(len(x)!=len(y)):return
 	if(value > x[-1]): return
 
 	for i, e in enumerate(x):
-		if(x[i+1] >= value >= x[i]):
+		if(x[i] <= value <= x[i+1]):
 			factor = rlerp(x[i], x[i+1], value)
 			return lerp(y[i], y[i+1], factor)
+	
+	print("Warning: Value was not in any of the ranges for multilerp().")
 
 def get_throttle_accel(vel):
 	""" Get available acceleration from throttle=1 """
@@ -77,7 +94,7 @@ def loc(obj) -> Vector3:
 def z0(loc):
 	return Vector3(loc.x,loc.y,0)
 
-def distance(loc1, loc2) -> float:
+def distance(loc1, loc2) -> MyVec3:
 	if(hasattr(loc1, "location")):
 		loc1 = loc1.location
 	if(hasattr(loc2, "location")):

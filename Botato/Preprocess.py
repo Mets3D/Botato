@@ -26,7 +26,8 @@ def preprocess(self, packet: GameTickPacket):
 	else:
 		self.enemy_goal = blue_goal
 		self.own_goal = orange_goal
-	# Botato
+	
+	# Transforms
 	self.car = packet.game_cars[self.index]
 	self.location = MyVec3(self.car.physics.location)
 	self.rotation.set_from_rotator(self.car.physics.rotation)
@@ -51,6 +52,7 @@ def preprocess(self, packet: GameTickPacket):
 	self.supersonic = self.car.is_super_sonic
 	self.speed = self.velocity.size
 	self.throttle_accel = get_throttle_accel(self.speed)
+	self.game_seconds = packet.game_info.seconds_elapsed
 
 	# Other Bots
 	self.opponents = list()

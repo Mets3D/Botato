@@ -8,6 +8,12 @@ class GameObject:
         self.rotation = Rotator()
         self.velocity = MyVec3()
 
+class BoostPad:
+    def __init__(self):
+        self.location = MyVec3()
+        self.timer = 0
+        self.big = False
+
 ball = GameObject()
 
 blue_goal = GameObject()

@@ -17,7 +17,7 @@ from keyboard_input import keyboard
 # RLBot
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
-from rlbot.utils.game_state_util import GameState, GameInfoState
+from rlbot.utils.game_state_util import GameState, GameInfoState, BallState, Physics, Vector3
 
 # RLUtilities
 from rlutilities.simulation import Ball, Field, Game, ray
@@ -53,12 +53,13 @@ def reachable(car, location, time_left):
 	# This function should evolve as does Botato, since as he learns new things, the ball will become reachable in more situations!
 	# This could also be called for enemy cars to check if we can reach the ball before they do, but since this function relies on knowing a bot's abilities, that will be very unreliable.
 
-	if(location.z > 100):
+	if(location.z > 200):
 		return False	# :)
 	
 	# TODO: do some really fancy stuff to correctly calculate how fast we can get there. The more accurate this function is, the sooner Botato might be able to go for the ball. Of course as long as we are only hitting ground balls, it doesn't really matter.
 	speed = 1400 if car.boost < 30 else 2300	# Good enough for Botimus, good enough for me.
-	ground_loc = MyVec3(location.x, location.z, 120)
+	
+	ground_loc = MyVec3(location.x, location.y, 120)
 	dist = distance(car.location, ground_loc).size
 	minimum_speed_to_reach = dist / (time_left+0.0000001)
 	return minimum_speed_to_reach < speed
@@ -66,6 +67,9 @@ def reachable(car, location, time_left):
 def find_soonest_reachable(car, prediction):
 	""" Find soonest reachable ball """
 	for ps in prediction.slices:
+		location = ps.physics.location
+		ground_loc = MyVec3(location.x, location.y, 120)
+		dist = distance(car.location, ground_loc).size
 		dt = ps.game_seconds - car.game_seconds
 		is_reachable = reachable(car, ps.physics.location, dt)
 		if(is_reachable):
@@ -219,6 +223,10 @@ class Strat_HitBallTowardsNet2(Strategy):
 		# Change desired speed so that when dt is higher, make it lower, and when it's lower, make it higher??
 		desired_speed = dist / max(0.01, dt)
 		desired_speed = desired_speed * (3-dt)
+		ETA = 2300 / dist	# ETA is the time under which we can get there. For now, using max speed.
+
+		#if(ETA > dt):		# If 
+
 
 		# Let's just say we want to accelerate about 2 seconds before we reach target, and we have a constant acceleration(or average acceleration).
 		average_accel = 1000
@@ -429,6 +437,7 @@ class Botato(BaseAgent):
 
 				self.controller.jump = keyboard.key_down("space")
 				self.controller.boost = keyboard.key_down("enter")
+
 			# Save/Load State
 			if(keyboard.key_down("left ctrl") and keyboard.key_down("s")):
 				self.saved_state = GameState.create_from_gametickpacket(packet)
@@ -444,6 +453,9 @@ class Botato(BaseAgent):
 				self.training = Training(self, "Straight Kickoff")
 			elif(keyboard.key_down("[2]")):
 				self.training = Training(self, "Prediction 1")
+			elif(keyboard.key_down("[3]")):
+				self.training = Training(self, "Random Ball Impulse")
+
 			# Change Game Speed
 			if(keyboard.key_down("left ctrl") and keyboard.key_down("[-]")):
 				#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed-0.1)

@@ -14,9 +14,10 @@
 	Keyboard input https://discordapp.com/channels/348658686962696195/348658686962696196/570442556526034995
 	
 	Aerialing https://discordapp.com/channels/348658686962696195/535605770436345857/575733927789199380
-
+	Yeeting at the ball https://discordapp.com/channels/348658686962696195/535605770436345857/576107478169812994
 
 	Github tutorial: https://learngitbranching.js.org/
+	Github book: https://git-scm.com/book/en/v2/Git-Basics-Viewing-the-Commit-History
 	Where I left off in the book: https://git-scm.com/book/en/v2/Git-Basics-Viewing-the-Commit-History
 	"""
 
@@ -35,6 +36,7 @@
 			- If too soon, slow down, if too late, speed up.
 			- Are we still gonna slow down as we get closer? I think not... this might be good...? https://discordapp.com/channels/348658686962696195/535605770436345857/575872115262095370
 
+		- Fix shitty math code https://discordapp.com/channels/348658686962696195/535605770436345857/574778990821113876
 		- Make speed maintaining more precise, if needed.
 		- Replace random desired speed with random amount of time.
 		- Assign a desired arrival speed, and be able to match it(Oof!!) - Remember that we can always gain 500 velocity by dodging into the ball!

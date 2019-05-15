@@ -1,0 +1,14 @@
+Drive()
+- As seen in ATBA agent, Drive() seems to boost when turning, and only then. That can't be right.
+- As seen in AerialTurn agent, AerialTurn() is really fast at pointing the car towards a target. 
+Although I don't how to set the target to a desired point yet. 
+Also quite often we don't just want to turn straight towards the ball, so this would be best used in the beginning of an aerial hit rather than the end.
+- HalfFlip_UNSUPPORTED is in fact unsupported.
+- Dodge does not dodge...?
+- Wavedash works but it's slow to the point of not being useful. Also it seems to be purely timing based, which is again, not useful, since the majority of wavedashes don't happen off the ground.
+- Fast Wavedash(Boostdash) for some reason starts off with some pitch in the car which makes the example not work properly. Increasing the wait time from 0.2 to 0.5 helps.
+This might be usable for ground wavedashes, but I don't know about wavedashing off the wall or for recovering from bumps.
+But I bet it's also timing based and probably very simple to implement myself, and that way it's easier to make improvements, so I think I'm giving this one a pass.
+- Aerial seems really damn good and I think I'm definitely gonna use it. It runs a simulation on each predicted ball to find the soonest reachable, I think. Although I am a bit confused about how aerial.simulate() works since it seems to be different from the usual step() functions found in RLU.
+- Dodge_preorientation doesn't seem to work.
+- DrivePath_EXPERIMENTAL works, and seems decent, but does some strange things sometimes, and obviously doesn't account for things like dodging, wavedashing and powersliding. Unfortunately, not even boosting, which I think is a dealbreaker.

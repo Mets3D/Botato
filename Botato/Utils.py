@@ -33,6 +33,36 @@ def quadratic(a, b, c, positive_only=False) -> list():
 		return ret
 	return [plus, minus]
 
+def accel_distance(initial_velocity, boost, time) -> float:
+	""" Measure how much distance we can make in a straight line """
+	# just kidding, fuck maths :D
+	timer = 0
+	tick_rate = 30
+	time_tick = 1/tick_rate
+
+	boost_remaining = boost
+	cum_vel = initial_velocity
+	cum_distance = 0 # ( ͡° ͜ʖ ͡°)
+	while(True):
+		throttle_accel = get_throttle_accel(cum_vel)
+		accel = throttle_accel + ACCEL_BOOST * (boost_remaining > 0)
+		accel_tick = accel / tick_rate
+		cum_vel += accel_tick
+		cum_distance += cum_vel / tick_rate
+		boost_remaining -= 3/100 / tick_rate
+		if(boost_remaining < 0):
+			boost_remaining = 0
+		if(cum_vel > 2300):
+			cum_vel = 2300
+		if(boost_remaining == 0):
+			if(cum_vel > 2200):
+				cum_vel = 2200
+		timer += time_tick
+		if(timer >= time):
+			break
+	return cum_distance
+
+
 def lerp(from_val, to_val, factor, clamp=False):
 	""" Linear interpolate between from_val to to_val by factor. """
 	if(clamp):
@@ -44,15 +74,16 @@ def rlerp(from_val, to_val, value):
 	factor = (value-from_val) / (to_val-from_val)
 	return factor
 
-def multilerp(x, y, value):
+def multilerp(x, y, x_value):
 	""" Piecewise linear interpolate value, where x and y are lists of equal length defining points of the curve. """
-	if(type(x)!=list or type(y)!=list):return
-	if(len(x)!=len(y)):return
-	if(value > x[-1]): return
+	# Thanks Dom for helping me improve my bad code https://discordapp.com/channels/348658686962696195/535605770436345857/574778990821113876
+	assert type(x)==list and type(y)==list, "x and y must be lists."
+	assert len(x) == len(y), "x and y need to be equal length."
+	assert x[0] <= x_value <= x[-1], "Value is out of range. Exrapolation currently not supported.\n" + str(x) + " \n" + str(y) + " \n" + str(x_value)
 
 	for i, e in enumerate(x):
-		if(x[i] <= value <= x[i+1]):
-			factor = rlerp(x[i], x[i+1], value)
+		if(x[i] <= x_value <= x[i+1]):
+			factor = rlerp(x[i], x[i+1], x_value)
 			return lerp(y[i], y[i+1], factor)
 	
 	print("Warning: Value was not in any of the ranges for multilerp().")
@@ -60,9 +91,13 @@ def multilerp(x, y, value):
 def get_throttle_accel(vel):
 	""" Get available acceleration from throttle=1 """
 	# Thanks to Chip https://samuelpmish.github.io/notes/RocketLeague/ground_control/
-	x = [0, 1400, 1410, 2300]
-	y = [1600, 160, 0, 0]
-	return multilerp(x, y, vel)
+	velocities = 	[0,    1400, 1410, 2300]
+	accelerations = [1600, 160,  0,    0   ]
+	return multilerp(velocities, accelerations, vel)
+
+def time_to_reach_velocity(vel):
+	""" Get how much time it will take to reach a given velocity with purely throttling - No steering or boosting. """
+	return 0
 
 
 def local_coords(origin_object, target_location) -> MyVec3:

@@ -32,10 +32,10 @@ class gui:
 				name = pygame.key.name(event.key)
 				# https://www.pygame.org/docs/ref/key.html
 				if(event.type == pygame.KEYDOWN):
-					print(name)
+					#print(name)
 					if(name in self.toggles.keys()):				# Toggles
 						self.toggles[name] = not self.toggles[name]
-						print(self.toggles[name])
+						#print(self.toggles[name])
 				self.buttons[name] = event.type == pygame.KEYDOWN	# Held buttons
 		return self.cur
 

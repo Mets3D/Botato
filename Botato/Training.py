@@ -82,4 +82,3 @@ class Training():
 		ball_state = BallState(Physics(velocity=self.ball_vel, location=self.ball_loc, angular_velocity=self.ball_av))
 		self.game_state = GameState(ball=ball_state, cars={self.car.index: car_state})
 		self.car.set_game_state(self.game_state)
-		print("whyyy")

@@ -1,15 +1,23 @@
 {
 	"folders": [
 		{
+			"name": "Botato",
 			"path": "Botato"
 		},
 		{
+			"name": "RLUTesterBot",
+			"path": "RLUTesterBot"
+		},
+		{
+			"name": "rlutilities",
 			"path": "D:\\rlbot\\rlutils\\rlutilities"
 		},
 		{
+			"name": "BotimusPrime",
 			"path": "D:\\rlbot\\RLBotGUI\\RLBotPack\\BotimusPrime"
 		},
 		{
+			"name": "examples",
 			"path": "D:\\rlbot\\rlutils\\examples"
 		}
 	],

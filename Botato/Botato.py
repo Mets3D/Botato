@@ -1,5 +1,5 @@
 """ Previously on botato...
-	I started realizing that hitting a predicted ball seems incredibly complicated. I don't even understand how Botimus fucking does it. I'm done, I want to die.
+	Predicted ball hitting works but is very simple.
 	"""
 
 # Python built-ins
@@ -17,7 +17,7 @@ from keyboard_input import keyboard
 # RLBot
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
-from rlbot.utils.game_state_util import GameState, GameInfoState, BallState, Physics, Vector3
+from rlbot.utils.game_state_util import GameState, GameInfoState
 
 # RLUtilities
 from rlutilities.simulation import Ball, Field, Game, ray
@@ -53,12 +53,31 @@ def reachable(car, location, time_left):
 	# This function should evolve as does Botato, since as he learns new things, the ball will become reachable in more situations!
 	# This could also be called for enemy cars to check if we can reach the ball before they do, but since this function relies on knowing a bot's abilities, that will be very unreliable.
 
-	if(location.z > 100):
+	if(location.z > 94):
 		return False	# :)
 	
 	# TODO: do some really fancy stuff to correctly calculate how fast we can get there. The more accurate this function is, the sooner Botato might be able to go for the ball. Of course as long as we are only hitting ground balls, it doesn't really matter.
-	speed = 1400 if car.boost < 30 else 2300	# Good enough for Botimus, good enough for me.
 	
+	# To be more accurate, we want to get a good estimate of what average velocity we can achieve over some amount of time, given an amount of boost.
+	# 
+	arrival_speed = 2300#-500
+	throttle_accel = get_throttle_accel(car.speed)											# Amount of velocity we are gaining from throttle right now. (0 if self.speed>1410)
+	boost_to_target_time = (throttle_accel + ACCEL_BOOST) / max(10, (arrival_speed - car.speed)) 	# Time it would take to reach target speed with boost
+	distance_while_boosting = 0#accel_distance(car.speed, car.boost, boost_to_target_time)	# Distance we would make while we accelerate to the target
+	ground_loc = MyVec3(location.x, location.y, 50)
+	dist = distance(car.location, ground_loc).size
+	distance_before_accel = dist - distance_while_boosting	# Distance we want to be before we start accelerating
+
+	target_steady_speed = distance_before_accel / (time_left+0.0000001)		# Speed we want to maintain before we start accelerating for the arrival speed
+	
+	boost_time = car.boost * 0.03				# Amount of time we can spend boosting
+	boost_velocity = min(2300-car.speed, boost_time * ACCEL_BOOST)	# Amount of velocity we can gain by using all of our boost (does not account for throttle acceleration)
+	
+	achievable_steady_speed = car.speed + throttle_accel + boost_velocity
+	return achievable_steady_speed > target_steady_speed
+	
+
+	speed = 1400 if car.boost < 30 else 2300	# Good enough for Botimus, good enough for me.
 	ground_loc = MyVec3(location.x, location.y, 50)
 	dist = distance(car.location, ground_loc).size
 	minimum_speed_to_reach = dist / (time_left+0.0000001)
@@ -206,48 +225,98 @@ class Strat_HitBallTowardsNet2(Strategy):
 	name = "Hit Ball Towards Net"
 	bias_boost = 0.6
 	bias_bump = 0.6
+	desired_speed = 2300
 	
 	@classmethod
 	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
 		cls.viability=0.99
 	
+
+	# How to shoot the ball:
+		# We know how long we until we want to take the shot (from the prediction).
+		# Figure out how long it would take us to accelerate from our current speed to the desired shooting speed.
+		# Figure out how that acceleration will affect our ETA to the ball
+		# Decelerate to counter-act the change on the average speed.
+
+		# If the time it takes to accelerate is less than the time to the shot, decelerate.
+		# If the time it takes to accelerate is the same as the time to the shot, is roughly equal, maintain speed.
+		# If the time is too short, it must mean we're already accelerating into the shot.
+
 	@classmethod
 	def update_path(cls, car):
-		
 		soonest_reachable = find_soonest_reachable(car, car.ball_prediction)
 		predicted_ball = soonest_reachable[0]
 		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
 		dist = distance(car.location, predicted_ball.physics.location).size
-		#desired_speed = optimal_speed(dist, dt, car.speed)
+		goal_average_speed = dist / max(0.01, dt)	# This MUST be our average speed on the way there.
 		
-		# Change desired speed so that when dt is higher, make it lower, and when it's lower, make it higher??
-		desired_speed = dist / max(0.01, dt)
-		"""
-		ETA = 2300 / dist	# ETA is the time under which we can get there. For now, using max speed.
+		arrival_speed = 2300#-500		# Desired speed at arrival
+		# Since we're planning to dodge into the ball, we are looking for max_speed-500, since dodging gives us 500 speed.
 
-		#if(ETA > dt):		# If 
-
-
-		# Let's just say we want to accelerate about 2 seconds before we reach target, and we have a constant acceleration(or average acceleration).
-		average_accel = 1000
-		# We want to apply this acceleration when we get this close to the target
-		#distance_until_start_acceleration = quadratic()
-
+		boost_time = car.boost * 0.03				# Amount of time we can spend boosting
+		#boost_velocity = min(2300-self.speed, boost_time * ACCEL_BOOST)	# Amount of velocity we can gain by using all of our boost (does not account for throttle acceleration)
+		cls.desired_speed = goal_average_speed-500
 		
-		desired_speed_at_target = 2300	# This would be calculated based on what we want to do with the ball(shoot it, dribble it, etc) - It could also be set to -1 when the desired speed is not important, or something, idk.
+		throttle_accel = get_throttle_accel(car.speed)											# Amount of velocity we are gaining from throttle right now. (0 if self.speed>1410)
+		
+		initial_speed = clamp(car.speed, 0, 1410)
+		boost_to_target_time = (throttle_accel + ACCEL_BOOST) / max(10, (arrival_speed - initial_speed)) 	# Time it would take to reach target speed with boost
+		distance_while_boosting = accel_distance(car.speed, car.boost, boost_to_target_time)	# Distance we would make while we accelerate to the target
+		
+		ground_loc = MyVec3(ball.location.x, ball.location.y, 50)
+		dist = distance(car.location, ground_loc).size
+		
+		distance_before_accel = dist - distance_while_boosting	# Distance we want to go before we start accelerating
+		target_steady_speed = distance_before_accel / (dt+0.0000001)		# Speed we want to maintain before we start accelerating for the arrival speed
+		
+		print("")
+		print(dist)
+		print(distance_while_boosting)
+		
+		# TODO: I haven't validated that the calculations this is relying on are working correctly, but I think there's definitely a logical flaw here.
+		# basically going into the else: part seems rare, and instead Botato ends up almost standing still at a distance from the ball.
+		# But once he does hit it, he's stuck going fast!
 
-		time_required_to_reach_target_speed = desired_speed_at_target - car.speed / average_accel # Time it would take to accelerate from our current speed to the desired impact speed
+		# I think the problem is likely that to calculate distance_while_boosting, we use our current speed as the initial speed, which is super not ideal when we're already going faster than we need to be.
+		# the max() in boost_to_target_time = is also part of this issue. For some reason we assumed that arrival_speped-car.speed being close to 0 causing issues was a problem, but it's kind of like the opposite. We need that thing to approach zero, and maintain speed when it does, and brake when it's negative(with that said, it could probably use a different name.)
+		# It also doesn't take into account maximum velocity.
 
-		if(dt > 3):
-			desired_speed = 1300
+		# I think accel_distance() needs to be refactored such that instead of taking time, it takes a target, and returns the distance and time it took to get to it at full throttle and boost usage.
+		# Then we can take it from there.
+		if(dist > distance_while_boosting):
+			cls.desired_speed = target_steady_speed
 		else:
-			desired_speed = 2300
+			cls.desired_speed = arrival_speed
+
+		"""if(car.speed > goal_average_speed):
+			cls.desired_speed = goal_average_speed
+		elif(0 < boost_to_target_time-1 <= dt):
+			print(boost_to_target_time)
+			cls.desired_speed=2300
 		"""
 
+		# When arrival speed is high, we need to find out how long it will take to accelerate to that point
+		# And start accelerating that amount of time before impact.
+		
+		# When arrival speed is low, we can do different things. 
+		# We could go there fast and slow down when we're almost there. 
+		# Or we could go there at a steady pace, with a steady deceleration, reaching the arrival speed just as we get there.
+
+		# What does "high" and "low" mean? I think it's a function of the old desired_speed, so distance/dt? If arrival speed is higher than that, we need to take it slow then accelerate at the end. If it's lower than that, we need to do one of the deceleration methods.
+
+
+
+		#time_to_accelerate = 
+		# Remember that if we want to dodge into the ball, we can 
+
+		
 		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
 		
-		return car.cs_on_ground(predicted_ball.physics.location, car.controller, desired_speed)
+		return car.cs_on_ground(predicted_ball.physics.location, car.controller, cls.desired_speed)
 
+		# Old code to hit ball towards net.
+		# TODO: Refactor so we can hit ball towards any target
+		# TODO: Aiming while powershooting should probably be fairly differently.
 		car_ball_dist = distance(car, ball).size
 		goal_ball_dist = distance(car.enemy_goal, ball).size
 		car_enemy_goal_dist = distance(car, car.enemy_goal).size
@@ -401,8 +470,15 @@ class Botato(BaseAgent):
 		
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
 			Preprocess.preprocess(self, packet)		# Cleaning up values
+
 			self.renderer.begin_rendering()
 			self.ball_prediction = self.get_ball_prediction_struct()
+				# Make sure ball doesn't get scored :P
+			for i in range(0, 30):
+				prediction_slice = self.ball_prediction.slices[i]
+				loc = prediction_slice.physics.location
+				if(abs(loc.y) > 5100):
+					self.training = Training(self, "Random Ball Impulse")
 
 			#print(dir(self.boost_locations[0]))
 			#print(len(self.boost_locations))
@@ -457,7 +533,7 @@ class Botato(BaseAgent):
 			elif(keyboard.key_down("[3]")):
 				self.training = Training(self, "Random Ball Impulse")
 
-			# Change Game Speed
+			# Change Game Speed (currently broken in RLBot)
 			if(keyboard.key_down("left ctrl") and keyboard.key_down("[-]")):
 				#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed-0.1)
 				game_info_state = GameInfoState(game_speed=0.5)
@@ -510,6 +586,8 @@ class Botato(BaseAgent):
 					controller.throttle = (self.distance_from_target/1000) * (self.yaw_car_to_target) / 40
 					controller.throttle = clamp(controller.throttle, 0, 1)
 			
+			if(self.speed - desired_speed > 500):
+				controller.throttle = -0.02		# Brake.
 			if(self.speed-1 < desired_speed):
 				controller.throttle = 1
 			elif(self.speed < desired_speed):	# Decrease our throttle to 0.02 to maintain acceleration
@@ -593,7 +671,7 @@ class Botato(BaseAgent):
 					controller.yaw=0
 			
 			# Step 1 - Jump
-			elif( 	
+			elif( 	False and 
 					self.speed > dodge_speed_threshold								# We are going fast enough (Dodging while slow is not worth it)
 					and abs(self.av.z) < 1500										# We aren't spinning like crazy
 					and self.speed+500 < desired_speed

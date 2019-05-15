@@ -26,20 +26,10 @@
 
 """TODO
 	Next
-		- Figure out how the fuck to hit a predicted ball properly.
-			- I know when I want to get there
-			- I know how fast I'm going
-			- I can make an estimate of how fast I will get there with my current speed
-			- I probably need a desired speed at arrival, which would usually be max speed.
-			
-			- Make the estimate of how fast we'll get there with current speed
-			- If too soon, slow down, if too late, speed up.
-			- Are we still gonna slow down as we get closer? I think not... this might be good...? https://discordapp.com/channels/348658686962696195/535605770436345857/575872115262095370
-
-		- Fix shitty math code https://discordapp.com/channels/348658686962696195/535605770436345857/574778990821113876
 		- Make speed maintaining more precise, if needed.
-		- Replace random desired speed with random amount of time.
 		- Assign a desired arrival speed, and be able to match it(Oof!!) - Remember that we can always gain 500 velocity by dodging into the ball!
+
+
 
 		- Prediction, and an initial strategy (hit_ball_towards_net, without ball chasing)
 		-	Since we can't aerial yet, we'll have to time our approach so that we arrive at a reachable(!) point at the time when it lands there.
@@ -48,11 +38,11 @@
 		-	The path will be recalculated each tick, starting at the strategy calculating the points that matter for it, then some corrective functions inserting additional waypoints in the path according to how much the strategy can accomodate that.
 		-	Actually, that's wrong. Avoiding the goalpost is more important than reaching the strategy target! So I guess it will be: strategy creates path to target->avoid_goalpost() inserts one extra target if needed->calculate reachable... but.. we need to know whether something is reachable before we figure out the path to it...? Don't we?
 		-	Maybe with some more processing, we can calculate a path to every single predicted ball, then do a reachable() check on the resulting path, to calculate if we can complete the entire path in the allotted time.
-		-	But how do we pick up boost?
-
-		This reachable() function being complicated af is one thing, but I don't even know what order i'm supposed to figure things out in. Do I find out if it's reachable first, then make a path to it? But if I add extra things to that path, the result of the reachable() will have been incorrect.
-		Or I come up with a path first, than see if that path is actually doable? But if it isn't, I could always try removing some boost pads from the path?
-
+		-	Or getting out of the goalpost can just be its own Strategy.
+		-	Nah, I prefer goalpost avoidance and boost grabbing to be "general" behaviour that is always active and doesn't block other things. We can simply insert a point to the path, and we don't care about whether this now makes the ball unreachable, fuck it.
+		-	Or we could start looking into RLU to help us follow a path?
+		
+	
 		How does a human do it? You know whether you can reach something based on intuitively knowing how much time and boost you need to get there. But calculating those without intuition is so fucking complicated.
 
 		Consider building the path step by step, within the strategy. You first find your final destination, then your pre-final destination, then you can have more for more complex strategies, point is, you first start with the most important waypoints, starting from the destination. Avoiding the goalpost would also have to happen here.

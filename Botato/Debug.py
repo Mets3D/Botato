@@ -11,7 +11,7 @@ debug_strats = 		False
 debug_controls = 	False
 debug_dodge = 		False
 debug_prediction = 	True
-debug_car = 		False
+debug_car = 		True
 debug_ball = 		False
 debug_target = 		False
 

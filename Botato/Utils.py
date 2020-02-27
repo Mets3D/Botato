@@ -33,34 +33,43 @@ def quadratic(a, b, c, positive_only=False) -> list():
 		return ret
 	return [plus, minus]
 
-def accel_distance(initial_velocity, boost, time) -> float:
-	""" Measure how much distance we can make in a straight line """
-	# just kidding, fuck maths :D
+def accel_distance(initial_speed, target_speed, boost, speed_error=1) -> list:
+	""" Measure how much time and distance it will require to go from initial_speed to target_speed, while moving in a straight line, with a given boost. """
 	timer = 0
-	tick_rate = 30
+	tick_rate = 120			# Increase this for more precision. We "simulate" this many times per second.
 	time_tick = 1/tick_rate
 
 	boost_remaining = boost
-	cum_vel = initial_velocity
+	cum_speed = initial_speed
 	cum_distance = 0 # ( ͡° ͜ʖ ͡°)
-	while(True):
-		throttle_accel = get_throttle_accel(cum_vel)
-		accel = throttle_accel + ACCEL_BOOST * (boost_remaining > 0)
-		accel_tick = accel / tick_rate
-		cum_vel += accel_tick
-		cum_distance += cum_vel / tick_rate
-		boost_remaining -= 3/100 / tick_rate
+
+	while(abs(cum_speed - initial_speed) <= speed_error):
+		total_accel = 0
+		
+		# Accelerating
+		if( cum_speed < target_speed ):
+			throttle_accel = get_throttle_accel(cum_speed)
+			total_accel = throttle_accel + ACCEL_BOOST * (boost_remaining > 0)
+			boost_remaining -= 3/100 / tick_rate
+		# Decelerating
+		elif( (cum_speed - target_speed) > 300 ):
+			total_accel = ACCEL_BRAKE		# Braking (TODO: this code has to roughly match the throttle logic in cs_move_on_ground, which is to say, this code should be unifited somehow.)
+		elif( cum_vel > target_speed ):
+			total_accel = ACCEL_COAST		# Coasting
+		# There is no code for maintained speed here, since when that would hit in, it would mean it's time to return our cum_distance.
+
+		cum_speed += total_accel / tick_rate
+		cum_distance += cum_speed / tick_rate
+
 		if(boost_remaining < 0):
 			boost_remaining = 0
-		if(cum_vel > 2300):
-			cum_vel = 2300
+		if(cum_speed > 2300):
+			cum_speed = 2300
 		if(boost_remaining == 0):
-			if(cum_vel > 2200):
-				cum_vel = 2200
+			if(cum_speed > 2200):
+				cum_speed = 2200
 		timer += time_tick
-		if(timer >= time):
-			break
-	return cum_distance
+	return [cum_distance, timer]
 
 
 def lerp(from_val, to_val, factor, clamp=False):

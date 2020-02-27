@@ -28,7 +28,7 @@
 	Next
 		- Make speed maintaining more precise, if needed.
 		- Assign a desired arrival speed, and be able to match it(Oof!!) - Remember that we can always gain 500 velocity by dodging into the ball!
-
+			- This seems to only be doable by reworking most of Botato and be able to simulate him.
 
 
 		- Prediction, and an initial strategy (hit_ball_towards_net, without ball chasing)

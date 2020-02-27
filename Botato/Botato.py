@@ -48,13 +48,20 @@ def get_yaw_relative(from_x, from_y, to_x, to_y, yaw):
 		yaw_relative -= 360
 	return yaw_relative
 
+bounce_counter = 0
+
 def reachable(car, location, time_left):
 	"""This should be called on all predicted balls, to find the soonest predicted ball that we should drive towards."""
 	# This function should evolve as does Botato, since as he learns new things, the ball will become reachable in more situations!
 	# This could also be called for enemy cars to check if we can reach the ball before they do, but since this function relies on knowing a bot's abilities, that will be very unreliable.
-
+	global bounce_counter
 	if(location.z > 94):
 		return False	# :)
+	else: 
+		ground_loc = MyVec3(location.x, location.y, 50)
+		dist = distance(car.location, ground_loc).size
+		if(dist/(time_left+0.001) < 2000):
+			return True
 	
 	# TODO: do some really fancy stuff to correctly calculate how fast we can get there. The more accurate this function is, the sooner Botato might be able to go for the ball. Of course as long as we are only hitting ground balls, it doesn't really matter.
 	
@@ -218,7 +225,14 @@ class Strat_Shooting(Strategy):
 		# TODO: Angle shooting logic...
 		return Strat_HitBall.update_path(car, teammates, opponents, ball, boost_pads, active_strategy, controller)
 
-class Strat_HitBallTowardsNet2(Strategy):
+class Strat_ArriveWithSpeed(Strategy):
+	"""While working on this, I realized that arriving with a given speed is a task that requires fucking with too many aspects of the code, and also requires simulating the game. So how about I get back to this at a far future date?"""
+	
+	"""Here's how it would be done, though:"""
+	# 1. For each ball prediction, simulate our car trying to reach it as fast as possible, and see if it does. And by "our car", I mean our car, with our implementation of the controls. This would also include turning, and the strategy updating the target location, everything. So we could set a requirement for arriving at a given angle also.
+	# 2. If it's reachable, see how much time it took to reach it, and what was the speed at arrival.
+	# 3. If the speed at arrival is not to our liking, try a different prediction, until it's close enough to the desired.
+
 	"""Temporary dumb strategy to move the ball towards the enemy goal."""
 	"""Upgraded with ball prediction, maybe."""
 
@@ -260,30 +274,32 @@ class Strat_HitBallTowardsNet2(Strategy):
 		throttle_accel = get_throttle_accel(car.speed)											# Amount of velocity we are gaining from throttle right now. (0 if self.speed>1410)
 		
 		initial_speed = clamp(car.speed, 0, 1410)
-		boost_to_target_time = (throttle_accel + ACCEL_BOOST) / max(10, (arrival_speed - initial_speed)) 	# Time it would take to reach target speed with boost
-		distance_while_boosting = accel_distance(car.speed, car.boost, boost_to_target_time)	# Distance we would make while we accelerate to the target
+		#boost_to_target_time = (throttle_accel + ACCEL_BOOST) / max(10, (arrival_speed - initial_speed)) 	# Time it would take to reach target speed with boost
+		accel_dist_time = accel_distance(car.speed, cls.desired_speed, car.boost)
+		distance_to_desired_speed = accel_dist_time[0]	# Distance we would make until we reach the target speed
+		time_to_desired_speed = accel_dist_time[1]		# Time it would take until we reach the target speed
 		
 		ground_loc = MyVec3(ball.location.x, ball.location.y, 50)
 		dist = distance(car.location, ground_loc).size
 		
-		distance_before_accel = dist - distance_while_boosting	# Distance we want to go before we start accelerating
+		distance_before_accel = dist - distance_to_desired_speed	# Distance we want to go before we start accelerating
 		target_steady_speed = distance_before_accel / (dt+0.0000001)		# Speed we want to maintain before we start accelerating for the arrival speed
 		
 		print("")
 		print(dist)
-		print(distance_while_boosting)
+		print(distance_to_desired_speed)
 		
 		# TODO: I haven't validated that the calculations this is relying on are working correctly, but I think there's definitely a logical flaw here.
 		# basically going into the else: part seems rare, and instead Botato ends up almost standing still at a distance from the ball.
 		# But once he does hit it, he's stuck going fast!
 
-		# I think the problem is likely that to calculate distance_while_boosting, we use our current speed as the initial speed, which is super not ideal when we're already going faster than we need to be.
+		# I think the problem is likely that to calculate distance_to_desired_speed, we use our current speed as the initial speed, which is super not ideal when we're already going faster than we need to be.
 		# the max() in boost_to_target_time = is also part of this issue. For some reason we assumed that arrival_speped-car.speed being close to 0 causing issues was a problem, but it's kind of like the opposite. We need that thing to approach zero, and maintain speed when it does, and brake when it's negative(with that said, it could probably use a different name.)
 		# It also doesn't take into account maximum velocity.
 
-		# I think accel_distance() needs to be refactored such that instead of taking time, it takes a target, and returns the distance and time it took to get to it at full throttle and boost usage.
+		# I think accel_distance() needs to be refactored such that instead of taking time, it takes a target speed, and returns the distance and time it took to get to it at full throttle and boost usage.
 		# Then we can take it from there.
-		if(dist > distance_while_boosting):
+		if(dist <= distance_to_desired_speed):
 			cls.desired_speed = target_steady_speed
 		else:
 			cls.desired_speed = arrival_speed
@@ -356,13 +372,11 @@ class Strat_MoveToRandomPoint(Strategy):
 		cls.viability=1.1
 	
 	@classmethod
-	def update_path(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
+	def update_path(cls, car):
 		target_obj = GameObject()
 		target_obj.location = car.raycast(cls.target, ball.location)
 
 		prediction = car.ball_prediction
-
-
 		car_target_dist = (car.location - target_obj.location).size
 
 		if(car_target_dist < 200 or cls.target.x==0):
@@ -386,13 +400,12 @@ class Strat_MoveToRandomPoint(Strategy):
 		else:
 			pass
 
-		car.cs_on_ground(target_obj.location, controller, cls.desired_speed)
 		super().update_path(car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer)
-		return controller
+		return car.cs_on_ground(target_obj.location, controller, cls.desired_speed)
 
 strategies = [
-	Strat_HitBallTowardsNet2,
-	#Strat_MoveToRandomPoint,
+	#Strat_HitBallTowardsNet2,
+	Strat_MoveToRandomPoint,
 	#Strat_Shooting,
 	#Strat_Saving,
 	#Strat_Clearing,
@@ -477,7 +490,7 @@ class Botato(BaseAgent):
 			for i in range(0, 30):
 				prediction_slice = self.ball_prediction.slices[i]
 				loc = prediction_slice.physics.location
-				if(abs(loc.y) > 5100):
+				if(abs(loc.y) > 5050):
 					self.training = Training(self, "Random Ball Impulse")
 
 			#print(dir(self.boost_locations[0]))
@@ -580,22 +593,23 @@ class Botato(BaseAgent):
 		# Throttle
 			# TODO: powersliding has different results in certain situations with throttle=0 or throttle=1. Would those be useful?
 			# TODO: sometimes we might want to reverse? But really only to half-flip, which we can't do yet. Even if we learn it, sometimes we might want to drive backwards into the ball and only half-flip when we get there.
-			if(
+			if(	# TODO: what the fuck is this code for? Looks like it's for when we are close to the target and facing away from it, but it's getting overwritten by what comes after it. So is this redundant? Should it not be?
 				abs(self.yaw_car_to_target) > 40	# This number should be some function of distance from target?
 				and self.distance_from_target < 1000):
 					controller.throttle = (self.distance_from_target/1000) * (self.yaw_car_to_target) / 40
 					controller.throttle = clamp(controller.throttle, 0, 1)
 			
-			if(self.speed - desired_speed > 500):
-				controller.throttle = -0.02		# Brake.
+			if(self.speed - desired_speed > 300):	# The speed threshold of 300 should be adjusted based on how far we are from the target. If we are far away, we'll have time to decelerate via coasting, but if not then we need to brake sooner.
+				controller.throttle = -1		# Brake.
 			if(self.speed-1 < desired_speed):
-				controller.throttle = 1
-			elif(self.speed < desired_speed):	# Decrease our throttle to 0.02 to maintain acceleration
-				controller.throttle = 0.02
-			else:								# Throttle=0 to decelerate
-				controller.throttle = 0
+				controller.throttle = 1			# Accelerate.
+			elif(self.speed < desired_speed):
+				controller.throttle = 0.02		# Maintain speed. (this prevents coasting deceleration from kicking in)
+			else:
+				controller.throttle = 0			# Decelerate by coasting.
+			
 		# Steering
-			turn_power = 20	# Increasing makes it align faster but be more wobbly, decreasing makes it less wobbly but align slower. This could possibly be improved but it's pretty good as is.
+			turn_power = 20	# Increasing makes it align faster but be more wobbly, decreasing makes it less wobbly but align slower. This could possibly be improved but it's good enough for now.
 			controller.steer = clamp(self.yaw_car_to_target/turn_power, -1, 1)
 
 			# Drifting
@@ -610,10 +624,7 @@ class Botato(BaseAgent):
 				self.controller.steer = -self.controller.steer
 				#print("drifting "+str(time.time()))
 		
-		# Dodging
-			# TODO: Implement half flipping. Maybe make it a separate "maneuver".
-			# TODO: Using flip cancelling/ reverse-half-half-flipping, we could recover faster when dodging into a ramp.
-			# When we are a fair distance from the target OR TODO: when it's okay to overshoot the target (TODO - this requires knowing our next target, which will come later.)
+		# Dodging	TODO: separate this code into something like a maneuver called flip_towards(), or whatever.
 
 			dodge_steering_threshold = 0.51
 			dodge_speed_threshold = 1000
@@ -622,10 +633,10 @@ class Botato(BaseAgent):
 			dodge_duration = 1.3	# Rough expected duration of a dodge.
 			dodge_distance = min(self.speed+500, 2299) * dodge_duration		# Expected dodge distance based on our current speed. (Dodging adds 500 to our speed)
 
-			dodge_delay = 0.18 - (2300-self.speed)/20000		# Time in s between jumping and flipping. If this value is too low, it causes Botato to scrape his nose on the floor. If this value is too high, Botato will dodge slower than optimal. The value has to be higher when our speed is lower.  This calculates to 0.13 when our speed is 1300, and to 0.18 when our speed is 2300.
-			wheel_contact_delay = 0.3							# Time in s that has to pass after landing before we should dodge again. This will probably be universal to all controller states, but it could be a factor of how hard we landed(Z velocity) when we last landed.
+			dodge_delay = 0.18 - (2300-self.speed)/20000		# Time between jumping and flipping. If this value is too low, it causes Botato to scrape his nose on the floor. If this value is too high, Botato will dodge slower than optimal. The value has to be higher when our speed is lower.  This calculates to 0.13 when our speed is 1300, and to 0.18 when our speed is 2300.
+			wheel_contact_delay = 0.3							# Time that has to pass after landing before we should dodge again. This will probably be universal to all controller states, but it could be a factor of how hard we landed(Z velocity) when we last landed.
 			
-			overshoot_threshold = 500	# We're allowed to overshoot the target by this distance. TODO: parameterize
+			overshoot_threshold = 500	# We're allowed to overshoot the target by this distance. TODO: parameterize, implement
 			
 			local_target_unit_vec = local_coords(self, self.active_strategy.target).normalized
 			
@@ -641,7 +652,6 @@ class Botato(BaseAgent):
 				if( dodge_delay >= time.time() - self.last_jump >= dodge_delay-0.1		# We're 0.03s away from the time when we should dodge. (TODO: I hope this doesn't break at low framerate :S)
 					and not self.dodged):
 					controller.jump = False
-					#print("STEP TWOOOOOOOOOOOOOOOO.5")
 				
 				# Step 3 - Dodge, continue air steering in the target direction until we land. This runs ONCE!
 				elif(time.time() - self.last_jump >= dodge_delay		# It's time to dodge.
@@ -652,7 +662,6 @@ class Botato(BaseAgent):
 						#print(local_target_unit_vec)
 						controller.jump = True
 						self.dodged = True
-						#print("step 3 REEEEEEEEEEEEEEEEEEEEEEEEEEEE")
 				
 				# Step 4 - Before landing, continue steering toward the target.
 				elif(self.dodged 										# We already dodged
@@ -663,7 +672,7 @@ class Botato(BaseAgent):
 					#print("dodge duration from jump to landing:")
 					#print(time.time()-self.last_jump)
 					#print("dodge distance")
-					#print((self.location - self.last_jump_loc).size) 
+					#print((self.location - self.last_jump_loc).size)
 					self.jumped=False
 					self.dodged=False
 					controller.jump=False
@@ -674,10 +683,10 @@ class Botato(BaseAgent):
 			elif( 	False and 
 					self.speed > dodge_speed_threshold								# We are going fast enough (Dodging while slow is not worth it)
 					and abs(self.av.z) < 1500										# We aren't spinning like crazy
-					and self.speed+500 < desired_speed
-					and speed_toward_target_ratio > speed_toward_target_ratio_threshold # We are moving towards the target with most of our speed.
+					and self.speed+500 < desired_speed								# TODO: At high enough distances, it could be worth it to dodge and over-accelerate, then decelerate to correct for it.
+					and speed_toward_target_ratio > speed_toward_target_ratio_threshold # We are moving towards the target with most of our speed. TODO: this should be covered by angular velocity checks instead, I feel like.
 					and self.yaw_car_to_target < 40									# We are more or less facing the target.
-					and self.distance_from_target > 1500 							# We are far enough away from the target TODO: this value needs to be dynamic, based on speed. (more speed, higher threshold) but it can have an allowance for overshooting, which could be a parameter.
+					and self.distance_from_target > 1500 							# We are far enough away from the target TODO: dodge_distance + overshoot_threshold
 					and self.location.z < 18 										# We are on the floor
 					and self.wheel_contact 											# We are touching the floor (slightly redundant, yes)
 					and time.time() - self.last_wheel_contact > wheel_contact_delay # We haven't just landed (Trying to jump directly after landing will result in disaster, except after Wavedashing).
@@ -690,14 +699,14 @@ class Botato(BaseAgent):
 					#print(dodge_distance)
 					self.last_jump_loc = self.location
 					controller.jump = True
-					controller.pitch = -1	# (Yes, this line only matters for the 1st tick.)
+					controller.pitch = -1
 					self.jumped = True
 					self.last_jump = time.time()
 					
 		# Boosting
 			yaw_limit = 10
-			max_speed = 2300
-			z_limit = 100
+			max_speed = 2299
+			#z_limit = 100
 
 			base_accel = self.dt * self.throttle_accel
 			boost_accel = self.dt * ACCEL_BOOST
@@ -705,14 +714,13 @@ class Botato(BaseAgent):
 			if(	 													# When do we want to boost?
 				controller.handbrake == False						# We are not powersliding (TODO: We might actually want to boost in the beginning (and/or end) of powersliding.)
 				and abs(self.yaw_car_to_target) < yaw_limit			# We are reasonably aligned with our target
-				and self.location.z < z_limit 						# We are not on a wall or goalpost (for now) (delete this when facing towards target is implemented, then just add a roll check ro make sure we aren't upside down or something...)
+				#and self.location.z < z_limit 						# We are not on a wall or goalpost (for now) (delete this when facing towards target is implemented, then just add a roll check ro make sure we aren't upside down or something...)
 				and (0 > self.rotation.pitch * RAD_TO_DEG > -50)	# We are not facing the sky or ground (possibly redundant)
-				#and abs(self.rotation.roll) * RAD_TO_DEG < 90 		# We are not sideways/on a wall (possibly redundant/wong to have this, idk.)
+				#and abs(self.rotation.roll) * RAD_TO_DEG < 90 		# We are not sideways/on a wall (possibly redundant/wrong to have this, idk.)
 				):
 				if(			# Further checks to see if we need the acceleration (This is a separate if for organization only)
-					self.speed < max_speed 									# We are not going very fast (TODO: In the future, when our speed is lower than desired speed)
-					and self.speed+base_accel+boost_accel < desired_speed	# We aren't going fast enough. (TODO: This could be smarter. We might be able to accelerate to the desired speed without boost.)
-					# TODO: Stop weirdly feathering boost, especially under 1400 speed, as long as we'll still accelerate fast enough to get there without using boost.
+					self.speed < max_speed 									# We are not going full speed
+					and self.speed+base_accel+boost_accel < desired_speed	# We aren't going fast enough. (TODO: We should only use boost if we can't reach desired speed within the required distance via just throttle. Although, reaching the desired speed faster makes our predictions more precise, sooner.
 				):
 					controller.boost = True
 			else:

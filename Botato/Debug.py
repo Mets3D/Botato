@@ -2,21 +2,21 @@ from Utils import *
 from Unreal import *
 import Botato
 import colorsys
+from Objects import arena
 
 res = (1920, 1080)				# Since the renderer uses pixel coordinates instead of 0-1 coordinates, which is kinda lame tbh.
 local_ratio = 40				# Divide local coords by this number, in order to fit them on screen. Increasing this will reduce the scale of the debug display, but will not reduce rectangle sizes.
-global_2d_offset = (600, -200)	# Offset all 2D rendering by this amount, from the center of the screen, in RLBot's space. So leaving this as (0,0) will draw everything relative to the center of the screen(as defined by resolution above), whereas setting it to (200, 200) will push it 200px left and 200px down.
+global_2d_offset = (600, -200)	# Offset all 2D rendering by this amount, from the center of the screen, in RLBot's space. So leaving this as (0,0) will draw everything relative to the center of the screen(as defined by resolution above), whereas setting it to (200, 200) will push it 200px left and 200px down. # TODO: This is dumb, delete it.
 
 # Debug toggles
-debug_strats = 		True
-debug_controls = 	True
-debug_dodge = 		True
-debug_prediction = 	True
-debug_car = 		True
-debug_ball = 		True
-debug_target = 		True
-
-"""The main important part in this file is vector_2d_3d() which lets me debug vectors faster and easier, by visualizing them in 2D and 3D with a single function call. (The rest of the functions are just for modularity, and some other stuff.)"""
+debug_strats 		= False
+debug_controls 		= True
+debug_dodge 		= True
+debug_prediction 	= True
+debug_car 			= False
+debug_ball 			= False
+debug_target 		= True
+debug_boostpads 	= False
 
 def ensure_color(r, color=None):
 	"""Helper function to get a default color if no color was specified to a render function."""
@@ -155,17 +155,18 @@ def analogue_stick(car, x, y, size=300, color_stick=None, color_bg=None):
 
 def render_all(car):
 	# Boost locations
-		if(False):
+		if(debug_boostpads):
 			boost_locations = [MyVec3(l.location.x, l.location.y, 50) for l in car.boost_locations]
 			for i, boost_loc in enumerate(boost_locations):
-				color = car.renderer.red() if not car.boost_pads[i].is_active else None
-				shitty_3d_rectangle(car, MyVec3(boost_loc), color=color)
+				color = car.renderer.red() if not car.boost_pads[i].is_active else car.renderer.white()
+				car.renderer.draw_rect_3d(MyVec3(boost_loc), 5, 5, True, color)
+				# shitty_3d_rectangle(car, MyVec3(boost_loc), color=color)
 
 	# Render target (line and square)
 		if(debug_target):
 			# Car / Center of local space
 			rect_2d_local(car, car.location, width=10, height=20, color=car.renderer.orange())
-			
+
 			target = car.active_strategy.target
 			
 			# Car Velocity Vector
@@ -178,7 +179,7 @@ def render_all(car):
 			text_2d(car, 10, 270, "Distance from target: " + str(int(car.distance_from_target)))
 			
 			time_to_reach = -1 if car.speed==0 else distance(car.location, car.active_strategy.target).size/car.speed
-			text_2d(car, 10, 300, "Time till arrival: " + str(time_to_reach))
+			text_2d(car, 10, 300, "ETA: " + str(time_to_reach))
 
 	# Render prediction (hue indicates dt, red=near future, blue=distant future)
 		if car.ball_prediction is not None and debug_prediction:
@@ -204,6 +205,7 @@ def render_all(car):
 			text_2d(car, 1400, 160, "Des Spd: " + str(int(car.active_strategy.desired_speed)) )
 
 			text_2d(car, 1400, 190, "Car AV: " + vec2str(car.av*1000))
+	
 	# Render Ball Transforms
 		if(debug_ball):
 			text_2d(car, 1400, 300, "Ball Loc: " + vec2str(ball.location))
@@ -223,21 +225,20 @@ def render_all(car):
 		if(debug_controls):
 			# Dimensions
 			ctrl_disp = (20, 650)
-			ctrl_disp_size = 350
+			ctrl_disp_size = 150
 
 			# Gray background
 			color=car.renderer.gray()
 			car.renderer.draw_rect_2d(ctrl_disp[0], ctrl_disp[1], ctrl_disp_size, ctrl_disp_size, True, car.renderer.gray())
 			steer = ctrl_disp[0]-10 + ctrl_disp_size/2 + (car.controller.steer * (ctrl_disp_size-20)/2)
+			
 			# White steering knob
+			color = car.renderer.lime() if car.controller.handbrake else car.renderer.white()		# Green when powersliding
 			forward = ctrl_disp[1]-10 + ctrl_disp_size/2 + (car.controller.pitch * (ctrl_disp_size-20)/2)
 			if(car.wheel_contact):
 				forward = ctrl_disp[1]-10 + ctrl_disp_size/2 + (-car.controller.throttle * (ctrl_disp_size-20)/2)
-			car.renderer.draw_rect_2d(steer, forward, 20, 20, True, car.renderer.white())
+			car.renderer.draw_rect_2d(steer, forward, 20, 20, True, color)
 			
-			# Powerslide True/False
-			color = car.renderer.lime() if car.controller.handbrake else car.renderer.red()
-			text_2d(car, ctrl_disp[0], ctrl_disp[1], "Powerslide: " + str(bool(car.controller.handbrake)), color=color)
 			# Angular Velocity : Yaw Difference ratio
 			#av_to_yaw_ratio = (car.av.z) / (car.yaw_car_to_target+0.0000001)
 			#text_2d(car, ctrl_disp[0], ctrl_disp[1]+30, "AV.z:Yaw = " + str( av_to_yaw_ratio ))

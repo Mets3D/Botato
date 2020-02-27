@@ -5,7 +5,6 @@ from Objects import *
 
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 
-
 # Constants
 RAD_TO_DEG = 180/math.pi	# TODO make this into a util function.
 # Accelerations (uu/s^2)
@@ -15,6 +14,117 @@ ACCEL_COAST = -525
 ACCEL_GRAV = 650
 
 arena = MyVec3(8200, 10280, 2050)
+
+def find_nearest(objs, obj):
+	"""Find object in objs that is nearest to obj."""
+	"""They need to have a .location.x/y/z."""
+	if(len(objs)==0): return obj	# For when there's no opponents... (should probably be checked outside this function but w/e.)
+	nearest = objs[0]
+	nearest_d = distance(nearest, obj)
+	for o in objs:
+		if(o is obj): continue
+		d = distance(obj, o)
+		if(d < nearest_d):
+			nearest = o
+			nearest_d = d
+	return nearest
+
+def get_yaw_relative(from_x, from_y, to_x, to_y, yaw):
+	"""Return yaw difference between two locations in rad"""
+	angle = math.degrees(math.atan2(to_y - from_y, to_x - from_x))
+	yaw_relative = angle - math.degrees(yaw)
+	# Correct the values
+	if yaw_relative < -180:
+		yaw_relative += 360
+	if yaw_relative > 180:
+		yaw_relative -= 360
+	return yaw_relative
+
+bounce_counter = 0
+
+def reachable(car, location, time_left):
+	"""This should be called on all predicted balls, to find the soonest predicted ball that we should drive towards."""
+	# This function should evolve as does Botato, since as he learns new things, the ball will become reachable in more situations!
+	# This could also be called for enemy cars to check if we can reach the ball before they do, but since this function relies on knowing a bot's abilities, that will be very unreliable.
+	global bounce_counter
+	if(location.z > 94):
+		return False	# :)
+	else: 
+		ground_loc = MyVec3(location.x, location.y, 50)
+		dist = distance(car.location, ground_loc).size
+		if(dist/(time_left+0.001) < 2000):
+			return True
+	
+	# TODO: do some really fancy stuff to correctly calculate how fast we can get there. The more accurate this function is, the sooner Botato might be able to go for the ball. Of course as long as we are only hitting ground balls, it doesn't really matter.
+	
+	# To be more accurate, we want to get a good estimate of what average velocity we can achieve over some amount of time, given an amount of boost.
+	# 
+	arrival_speed = 2300#-500
+	throttle_accel = get_throttle_accel(car.speed)											# Amount of velocity we are gaining from throttle right now. (0 if self.speed>1410)
+	boost_to_target_time = (throttle_accel + ACCEL_BOOST) / max(10, (arrival_speed - car.speed)) 	# Time it would take to reach target speed with boost
+	distance_while_boosting = 0#accel_distance(car.speed, car.boost, boost_to_target_time)	# Distance we would make while we accelerate to the target
+	ground_loc = MyVec3(location.x, location.y, 50)
+	dist = distance(car.location, ground_loc).size
+	distance_before_accel = dist - distance_while_boosting	# Distance we want to be before we start accelerating
+
+	target_steady_speed = distance_before_accel / (time_left+0.0000001)		# Speed we want to maintain before we start accelerating for the arrival speed
+	
+	boost_time = car.boost * 0.03				# Amount of time we can spend boosting
+	boost_velocity = min(2300-car.speed, boost_time * ACCEL_BOOST)	# Amount of velocity we can gain by using all of our boost (does not account for throttle acceleration)
+	
+	achievable_steady_speed = car.speed + throttle_accel + boost_velocity
+	return achievable_steady_speed > target_steady_speed
+	
+
+	speed = 1400 if car.boost < 30 else 2300	# Good enough for Botimus, good enough for me.
+	ground_loc = MyVec3(location.x, location.y, 50)
+	dist = distance(car.location, ground_loc).size
+	minimum_speed_to_reach = dist / (time_left+0.0000001)
+	return minimum_speed_to_reach < speed
+
+def find_soonest_reachable(car, prediction):
+	""" Find soonest reachable ball """
+	for ps in prediction.slices:
+		location = ps.physics.location
+		ground_loc = MyVec3(location.x, location.y, 120)
+		dist = distance(car.location, ground_loc).size
+		dt = ps.game_seconds - car.game_seconds
+		is_reachable = reachable(car, ps.physics.location, dt)
+		if(is_reachable):
+			return [ps, dt]
+
+def optimal_speed(dist, time_left, current_speed):
+	# In its current state this is straight from Botimus. Idk what Alpha is for, I guess an overspeeding factor to account for the imprecise reachable(). Better to get there too soon and park than to not get there in time. Still, not ideal.
+	# In any case, I don't have the brain capacity right now to think about this.
+    desired_speed = dist / max(0.01, time_left)
+    alpha = 1.3
+    return  alpha * desired_speed - (alpha - 1) * current_speed
+
+def distance_to_time(distance, initial_speed, acceleration):
+	""" Calculate time it would take to move distance amount with an initial speed and a constant acceleration. Does not take into account turning or anything along those lines. """
+	# Also, acceleration is rarely constant, and when it is, it's 0. So that's pretty gay. I wonder how I'm gonna work around that, cause I have no clue.
+	eta = quadratic(acceleration, initial_speed, distance, positive_only=True)
+	if(eta):
+		return eta[0]
+
+def raycast(loc1, loc2, debug=True) -> MyVec3:
+	"""Wrapper for easy raycasting against the Pitch's geo."""
+	"""Casts a ray from loc1 to loc2. Returns the location of where the line intersected the Pitch. Returns loc1 if didn't intersect."""
+	# TODO: the default behaviour of raycasting from a start position towards a vector(rather than from A to B) will be useful too, maybe add a flag param to switch to that behavior.
+
+	loc1 = MyVec3(loc1)
+	loc2 = MyVec3(loc2)
+	difference = loc2 - loc1
+	
+	my_ray = ray(loc1, difference)
+	ray_end = loc1 + difference
+	my_raycast = Pitch.raycast_any(my_ray)
+	
+	if(str(my_raycast.start) == str(ray_end)):
+		# If the raycast didn't intersect with anything, return the target location.
+		return loc1
+
+	return MyVec3(my_raycast.start)
 
 def quadratic(a, b, c, positive_only=False) -> list():
 	""" ax^2 + bx + c = 0 """

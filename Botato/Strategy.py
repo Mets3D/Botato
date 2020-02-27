@@ -55,59 +55,74 @@ class Strategy:
 		return car.cs_on_ground(car, cls.path[0], car.controller, 2300)
 		return None
 
-class Strat_Shooting(Strategy):
-	"""Shoot the ball towards the enemy net. WIP for future non-temp strat."""
-	name = "Shooting"
-	bias_boost = 0.2
-	bias_bump = 0.0
+class Strat_HitBallTowardsNet2(Strategy):
+	"""Temporary dumb strategy to move the ball towards the enemy goal."""
+	"""Upgraded with ball prediction, maybe."""
+
+	name = "Hit Ball Towards Net"
+	bias_boost = 0.6
+	bias_bump = 0.6
 	
 	@classmethod
 	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
-		""" Things that are a MUST: 
-			- Ball is in front of us (we should Turn instead.)
-			- Enemy is not up against the ball (we should Challenge instead.)
-			Things that are good:
-			- We can probably get to the ball before the enemy.
-			- Ball is rolling toward us
-			- We have some boost
-			"""
-		cls.viability = 0.5
-		
-		"""MUST: Ball is in front of us"""
-		angle_threshold = 65
-		# Angle calculated from absolute world positions (car rotation is not considered)
-		angle_from_location = math.atan2(ball.location.y - car.location.y, ball.location.x - car.location.x)
-		# Yaw difference in rad between the absolute angle and the car's current yaw
-		yaw_relative = angle_from_location - car.rotation.yaw
-		cls.viability *= abs(yaw_relative) * RAD_TO_DEG < angle_threshold 
-		
-		"""Good: THe ball is very in front of us?"""
-		
-		
-		"""MUST: Enemy is not up against the ball"""
-		"""This might be redundant, since the Challenge strategy would yield a super high viability when the enemy is up against the ball, but this way it's more explicit."""
-		nearest_opponent_to_ball = find_nearest(opponents, ball)
-		opponent_distance_to_ball = distance(nearest_opponent_to_ball, ball)
-		cls.viability *= opponent_distance_to_ball < 200
-		
-		"""Good: We have some boost
-			0 boost should subtract 0.2v
-			50 boost should add 0v.
-			100 boost should add 0.2v
-		"""
-		cls.viability += (car.boost/100-0.5) * 0.4
-		# TODO: The rest...
-		
-		
-		if( ball.location.x == 0 and ball.location.y==0 ):
-			cls.viability=1
-		else:
-			cls.viability=0
+		cls.viability=0.99
 	
 	@classmethod
-	def update_path(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
-		# TODO: Angle shooting logic...
-		return Strat_HitBall.update_path(car, teammates, opponents, ball, boost_pads, active_strategy, controller)
+	def update_path(cls, car):
+		soonest_reachable = find_soonest_reachable(car, car.ball_prediction)
+		predicted_ball = soonest_reachable[0]
+		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
+		dist = distance(car.location, predicted_ball.physics.location).size
+		#desired_speed = optimal_speed(dist, dt, car.speed)
+		
+		# Change desired speed so that when dt is higher, make it lower, and when it's lower, make it higher??
+		desired_speed = dist / max(0.01, dt)
+		"""
+		ETA = 2300 / dist	# ETA is the time under which we can get there. For now, using max speed.
+		#if(ETA > dt):		# If 
+		# Let's just say we want to accelerate about 2 seconds before we reach target, and we have a constant acceleration(or average acceleration).
+		average_accel = 1000
+		# We want to apply this acceleration when we get this close to the target
+		#distance_until_start_acceleration = quadratic()
+		
+		desired_speed_at_target = 2300	# This would be calculated based on what we want to do with the ball(shoot it, dribble it, etc) - It could also be set to -1 when the desired speed is not important, or something, idk.
+		time_required_to_reach_target_speed = desired_speed_at_target - car.speed / average_accel # Time it would take to accelerate from our current speed to the desired impact speed
+		if(dt > 3):
+			desired_speed = 1300
+		else:
+			desired_speed = 2300
+		"""
+
+		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
+		
+		return car.cs_on_ground(predicted_ball.physics.location, car.controller, desired_speed)
+
+		car_ball_dist = distance(car, ball).size
+		goal_ball_dist = distance(car.enemy_goal, ball).size
+		car_enemy_goal_dist = distance(car, car.enemy_goal).size
+		# We project a line from the goal towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
+		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the enemy goal) the ball.
+		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
+		goal_ball_vec = car.enemy_goal.location - ball.location
+		ball_dist_ratio = car_ball_dist/goal_ball_dist
+		desired_distance_from_ball = car_ball_dist/2
+		
+		car.location - car.enemy_goal.location
+		
+		cls.target = ball.location - (goal_ball_vec.normalized * desired_distance_from_ball)
+		cls.target[2]=17
+		target_obj = GameObject()
+		target_obj.location = raycast(cls.target, ball.location)
+
+		# TODO Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
+		# TODO could also aim at the opposite corner of the net rather than the center.
+		# TODO avoid hitting ball into our own net, but probably don't do this inside this strategy. Instead, in those situations, this shouldn't be the active strategy to begin with.
+
+		return car.cs_on_ground(cls.target, car.controller, 2300)
+	
+	@classmethod
+	def execute(cls, car):
+		return cls.update_path(car)
 
 class Strat_ArriveWithSpeed(Strategy):
 	"""While working on this, I realized that arriving with a given speed is a task that requires fucking with too many aspects of the code, and also requires simulating the game. So how about I get back to this at a far future date?"""
@@ -292,8 +307,8 @@ class Strat_MoveToRandomPoint(Strategy):
 		return car.cs_on_ground(cls.target, car.controller, cls.desired_speed)
 
 strategies = [
-	#Strat_HitBallTowardsNet2,
-	Strat_MoveToRandomPoint,
+	Strat_HitBallTowardsNet2,
+	#Strat_MoveToRandomPoint,
 	#Strat_Shooting,
 	#Strat_Saving,
 	#Strat_Clearing,

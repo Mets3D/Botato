@@ -48,7 +48,7 @@ def reachable(car, location, time_left):
 	# This could also be called for enemy cars to check if we can reach the ball before they do, but since this function relies on knowing a bot's abilities, that will be very unreliable.
 	global bounce_counter
 	if(location.z > 94):
-		return False	# :)
+		return False	# No aerialing :)
 	else: 
 		ground_loc = MyVec3(location.x, location.y, 50)
 		dist = distance(car.location, ground_loc).size

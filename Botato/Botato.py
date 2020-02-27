@@ -1,18 +1,13 @@
-""" Previously on botato...
-	Predicted ball hitting works but is very simple.
-	"""
-
 # Python built-ins
 import math, colorsys, random, copy
 
-# My own packages/classes/garbage(TODO clean this shit up, stop importing functions and variables directly, it's ugly af.)
 from Unreal import Rotator, MyVec3
 from Objects import *
 from Utils import *
 from Training import *
 import Debug
 import Preprocess
-from keyboard_input import keyboard
+# from keyboard_input import keyboard
 
 # RLBot
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
@@ -20,7 +15,8 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket
 from rlbot.utils.game_state_util import GameState, GameInfoState
 
 # RLUtilities
-from rlutilities.simulation import Ball, Field, Game, ray
+from RLUtilities import Simulation
+from RLUtilities.Simulation import Ball, Pitch, ray
 
 # TODO these utility functions should be moved to Utils.
 def find_nearest(objs, obj):
@@ -116,8 +112,8 @@ def distance_to_time(distance, initial_speed, acceleration):
 		return eta[0]
 
 def raycast(loc1, loc2, debug=True) -> MyVec3:
-	"""Wrapper for easy raycasting against the field's geo."""
-	"""Casts a ray from loc1 to loc2. Returns the location of where the line intersected the field. Returns loc1 if didn't intersect."""
+	"""Wrapper for easy raycasting against the Pitch's geo."""
+	"""Casts a ray from loc1 to loc2. Returns the location of where the line intersected the Pitch. Returns loc1 if didn't intersect."""
 	# TODO: the default behaviour of raycasting from a start position towards a vector(rather than from A to B) will be useful too, maybe add a flag param to switch to that behavior.
 
 	loc1 = MyVec3(loc1)
@@ -126,7 +122,7 @@ def raycast(loc1, loc2, debug=True) -> MyVec3:
 	
 	my_ray = ray(loc1, difference)
 	ray_end = loc1 + difference
-	my_raycast = Field.raycast_any(my_ray)
+	my_raycast = Pitch.raycast_any(my_ray)
 	
 	if(str(my_raycast.start) == str(ray_end)):
 		# If the raycast didn't intersect with anything, return the target location.
@@ -168,7 +164,7 @@ class Strategy:
 	@classmethod
 	def execute(cls, car):
 		""" Choose a ControllerState and run it. """
-		#return car.cs_on_ground(car, cls.path[0], car.controller, 2300)
+		return car.cs_on_ground(car, cls.path[0], car.controller, 2300)
 		return None
 
 class Strat_Shooting(Strategy):
@@ -374,14 +370,13 @@ class Strat_MoveToRandomPoint(Strategy):
 	@classmethod
 	def update_path(cls, car):
 		target_obj = GameObject()
-		target_obj.location = car.raycast(cls.target, ball.location)
 
 		prediction = car.ball_prediction
-		car_target_dist = (car.location - target_obj.location).size
+		car_target_dist = (car.location - cls.target).size
 
 		if(car_target_dist < 200 or cls.target.x==0):
 			arena = MyVec3(8200*.9, 10280*.9, 2050*0.1)
-			random_point = MyVec3( (random.random()-0.5) * arena.x, (random.random()-0.5) * arena.y, 100 )
+			random_point = MyVec3( (random.random()-0.5) * arena.x, (random.random()-0.5) * arena.y, 200 )
 			# goal1 = MyVec3( 1, arena.y*0.4, 17)
 			# random_point = MyVec3( 1, -arena.y*0.4, 17)
 			# if(random.random()>0.5):
@@ -400,8 +395,12 @@ class Strat_MoveToRandomPoint(Strategy):
 		else:
 			pass
 
-		super().update_path(car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer)
-		return car.cs_on_ground(target_obj.location, controller, cls.desired_speed)
+		# super().update_path(car, car.teammates, car.opponents, car.ball, car.boost_pads, car.active_strategy, car.controller, car.renderer)
+	
+	@classmethod
+	def execute(cls, car):
+		cls.update_path(car)
+		return car.cs_on_ground(cls.target, car.controller, cls.desired_speed)
 
 strategies = [
 	#Strat_HitBallTowardsNet2,
@@ -412,8 +411,8 @@ strategies = [
 ]
 
 class Botato(BaseAgent):
-	def __init__(self, name, team, index):
-		super().__init__(name, team, index)
+	def initialize_agent(self):
+		super().initialize_agent()
 		
 		#Debug values updated by MoveToRandomPoint, for now.
 		self.ETA = 0				# Time estimated that it will take us to get to target
@@ -424,15 +423,15 @@ class Botato(BaseAgent):
 		self.ball_prediction = None
 
 		# RLUtilities
-		Game.set_mode("soccar")
-		self.game = Game(index, team)
+		# Game.set_mode("soccar")
+		# self.game = Game(index, team)
 
 		# Debug Tools
-		keyboard.make_toggle("x")
+		# keyboard.make_toggle("x")
 		self.training = None
 		self.saved_state = None			# For saving and loading states.
 
-		self.active_strategy = Strat_HitBallTowardsNet2
+		self.active_strategy = Strat_MoveToRandomPoint
 
 		self.time_old = 1
 		self.dt = 1
@@ -461,6 +460,8 @@ class Botato(BaseAgent):
 		# Car values
 		self.location = MyVec3(0, 0, 0)
 		self.rotation = Rotator()
+		print("self.rotation should exist!!!!!!!!!!!!!")
+		print(self.rotation)
 		self.velocity = MyVec3(0, 0, 0)
 		
 		self.speed = 0
@@ -480,7 +481,67 @@ class Botato(BaseAgent):
 
 		self.boost_pads = []
 		self.boost_locations = []
-		
+	
+	def keyboard_input():
+		return # TODO: Find a way to implement this without pygame. There is probably a way now, 10 months later.
+		# Debug Input
+		# Controls (You must have the white pygame window in focus!):
+			# x: Toggle taking control of Botato.
+			# WASD to move, Space to jump, Numpad Enter to boost, Left Shift to Powerslide/Air Roll.
+			# Ctrl+S/Ctrl+L to save/load game state.
+			# Numpad 0-9 to load trainings.
+
+		keyboard.update()
+
+		# Take control of Botato
+		if(keyboard.toggles['x']):
+			self.controller.throttle = keyboard.key_down("w") - keyboard.key_down("s")
+			self.controller.pitch = -self.controller.throttle
+
+			self.controller.steer = keyboard.key_down("d") - keyboard.key_down("a")
+			self.controller.handbrake = keyboard.key_down("left shift")
+			if(self.controller.handbrake):
+				self.controller.roll = self.controller.steer
+			else:
+				self.controller.yaw = self.controller.steer
+
+			self.controller.jump = keyboard.key_down("space")
+			self.controller.boost = keyboard.key_down("enter")
+
+		# Save/Load State
+		if(keyboard.key_down("left ctrl") and keyboard.key_down("s")):
+			self.saved_state = GameState.create_from_gametickpacket(packet)
+		if(keyboard.key_down("left ctrl") and keyboard.key_down("l")):
+			self.set_game_state(self.saved_state)
+		# Reset current training, without changing randomization.
+		if(keyboard.key_down("r")):
+			self.training.reset()
+		# Activate a Training
+		if(keyboard.key_down("[0]")):
+			self.training = Training(self, "Diagonal Kickoff")
+		elif(keyboard.key_down("[1]")):
+			self.training = Training(self, "Straight Kickoff")
+		elif(keyboard.key_down("[2]")):
+			self.training = Training(self, "Prediction 1")
+		elif(keyboard.key_down("[3]")):
+			self.training = Training(self, "Random Ball Impulse")
+
+		# Change Game Speed (currently broken in RLBot)
+		if(keyboard.key_down("left ctrl") and keyboard.key_down("[-]")):
+			#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed-0.1)
+			game_info_state = GameInfoState(game_speed=0.5)
+			game_state = GameState(game_info=game_info_state)
+			self.set_game_state(game_state)
+			#print("Slowing to " + str(packet.game_info.game_speed-0.1))
+			print("Slowing to 0.5")
+		if(keyboard.key_down("left ctrl") and keyboard.key_down("[+]")):
+			#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed+0.1)
+			game_info_state = GameInfoState(game_speed=1)
+			game_state = GameState(game_info=game_info_state)
+			self.set_game_state(game_state)
+			#print("Speeding to " + str(packet.game_info.game_speed+0.1))
+			print("Speeding to 1")
+
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
 			Preprocess.preprocess(self, packet)		# Cleaning up values
 
@@ -504,67 +565,9 @@ class Botato(BaseAgent):
 			
 			self.active_strategy.execute(self)
 
-		# Debug Input
-			# Controls (You must have the white pygame window in focus!):
-				# x: Toggle taking control of Botato.
-				# WASD to move, Space to jump, Numpad Enter to boost, Left Shift to Powerslide/Air Roll.
-				# Ctrl+S/Ctrl+L to save/load game state.
-				# Numpad 0-9 to load trainings.
-
-			keyboard.update()
-
-			# Take control of Botato
-			if(keyboard.toggles['x']):
-				self.controller.throttle = keyboard.key_down("w") - keyboard.key_down("s")
-				self.controller.pitch = -self.controller.throttle
-
-				self.controller.steer = keyboard.key_down("d") - keyboard.key_down("a")
-				self.controller.handbrake = keyboard.key_down("left shift")
-				if(self.controller.handbrake):
-					self.controller.roll = self.controller.steer
-				else:
-					self.controller.yaw = self.controller.steer
-
-				self.controller.jump = keyboard.key_down("space")
-				self.controller.boost = keyboard.key_down("enter")
-
-			# Save/Load State
-			if(keyboard.key_down("left ctrl") and keyboard.key_down("s")):
-				self.saved_state = GameState.create_from_gametickpacket(packet)
-			if(keyboard.key_down("left ctrl") and keyboard.key_down("l")):
-				self.set_game_state(self.saved_state)
-			# Reset current training, without changing randomization.
-			if(keyboard.key_down("r")):
-				self.training.reset()
-			# Activate a Training
-			if(keyboard.key_down("[0]")):
-				self.training = Training(self, "Diagonal Kickoff")
-			elif(keyboard.key_down("[1]")):
-				self.training = Training(self, "Straight Kickoff")
-			elif(keyboard.key_down("[2]")):
-				self.training = Training(self, "Prediction 1")
-			elif(keyboard.key_down("[3]")):
-				self.training = Training(self, "Random Ball Impulse")
-
-			# Change Game Speed (currently broken in RLBot)
-			if(keyboard.key_down("left ctrl") and keyboard.key_down("[-]")):
-				#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed-0.1)
-				game_info_state = GameInfoState(game_speed=0.5)
-				game_state = GameState(game_info=game_info_state)
-				self.set_game_state(game_state)
-				#print("Slowing to " + str(packet.game_info.game_speed-0.1))
-				print("Slowing to 0.5")
-			if(keyboard.key_down("left ctrl") and keyboard.key_down("[+]")):
-				#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed+0.1)
-				game_info_state = GameInfoState(game_speed=1)
-				game_state = GameState(game_info=game_info_state)
-				self.set_game_state(game_state)
-				#print("Speeding to " + str(packet.game_info.game_speed+0.1))
-				print("Speeding to 1")
-
-		# Debug Render - only for index==0 car.
-			if(self.index==0):
-				Debug.render_all(self)
+			# Debug Render - only for index==0 car.
+			# if(self.index==0):
+			Debug.render_all(self)
 
 			self.renderer.end_rendering()
 

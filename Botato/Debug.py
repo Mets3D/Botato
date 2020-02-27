@@ -1,5 +1,6 @@
 from Utils import *
 from Unreal import *
+import Botato
 import colorsys
 
 res = (1920, 1080)				# Since the renderer uses pixel coordinates instead of 0-1 coordinates, which is kinda lame tbh.
@@ -7,13 +8,13 @@ local_ratio = 40				# Divide local coords by this number, in order to fit them o
 global_2d_offset = (600, -200)	# Offset all 2D rendering by this amount, from the center of the screen, in RLBot's space. So leaving this as (0,0) will draw everything relative to the center of the screen(as defined by resolution above), whereas setting it to (200, 200) will push it 200px left and 200px down.
 
 # Debug toggles
-debug_strats = 		False
-debug_controls = 	False
-debug_dodge = 		False
+debug_strats = 		True
+debug_controls = 	True
+debug_dodge = 		True
 debug_prediction = 	True
 debug_car = 		True
-debug_ball = 		False
-debug_target = 		False
+debug_ball = 		True
+debug_target = 		True
 
 """The main important part in this file is vector_2d_3d() which lets me debug vectors faster and easier, by visualizing them in 2D and 3D with a single function call. (The rest of the functions are just for modularity, and some other stuff.)"""
 
@@ -80,7 +81,7 @@ def line_2d_from_center(car, x1, y1, x2, y2, color=None):
 	y1_screen = res[1]/2 + y1
 	x2_screen = res[0]/2 + x2
 	y2_screen = res[1]/2 + y2
-
+	return # draw_line_2d currently not supported in RLBot.
 	r.draw_line_2d(	x1_screen + global_2d_offset[0], 
 					y1_screen + global_2d_offset[1], 
 					x2_screen + global_2d_offset[0], 
@@ -211,7 +212,7 @@ def render_all(car):
 
 	# Render Strategies
 		if(debug_strats):
-			for i, s in enumerate(strategies):
+			for i, s in enumerate(Botato.strategies):
 				color = car.renderer.white()
 				if(s==car.active_strategy):
 					color = car.renderer.lime()

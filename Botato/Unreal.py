@@ -5,7 +5,7 @@ import math
 from rlbot.utils.structures.game_data_struct import Vector3 as gds_Vec3
 from rlbot.utils.game_state_util import Vector3 as gsu_Vec3
 from rlbot.utils.game_state_util import Rotator as gsu_rot
-from rlutilities.linear_algebra import vec3
+from RLUtilities.LinearAlgebra import vec3
 
 class MyVec3(vec3):
 	def __init__(self, x=0.0, y=0.0, z=0.0):

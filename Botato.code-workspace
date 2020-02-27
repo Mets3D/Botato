@@ -19,6 +19,12 @@
 		{
 			"name": "examples",
 			"path": "D:\\rlbot\\rlutils\\examples"
+		},
+		{
+			"path": "D:\\rlbot\\RLBotGUI\\RLBotPack\\Wildfire_Wintertide_v0.25\\Wildfire"
+		},
+		{
+			"path": "D:\\rlbot\\RLBotGUI\\RLBotPack\\Zoomelette.py"
 		}
 	],
 	"settings": {}

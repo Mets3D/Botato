@@ -1,42 +1,48 @@
-import pygame
-# Shoutout to GooseFairy https://discordapp.com/channels/348658686962696195/348658686962696196/570442556526034995
-class gui:
-	def __init__(self):
-		pygame.init()
-		pygame.font.init()
-		pygame.key.set_repeat(False)
-		self.font = pygame.font.SysFont('uh',30)
-		self.window = pygame.display.set_mode((500,500))
-		self.white = (255,255,255)
-		self.buttons = dict()
-		self.toggles = dict()
-		self.cur = 0
+from pynput import keyboard
+
+buttons = dict()
+toggles = dict()
+
+def is_toggle(key_name):
+	if not key_name in toggles.keys():
+		toggles[key_name] = is_key_down(key_name)
 	
-	def key_down(self, key_name):
-		if(key_name in self.buttons.keys()):
-			return self.buttons[key_name]
-		else:
-			return False
-		
-	def make_toggle(self, key_name, default=False):
-		"""Assign a toggle value to a key, so that it switches only on KEYDOWN events."""
-		self.toggles[key_name] = default
+	return toggles[key_name]
 
-	def update(self):
-		self.window.fill(self.white)
-		text = self.font.render("hello", False, (0,0,0))
-		self.window.blit(text, (250,250))
-		pygame.display.update()
-		for event in pygame.event.get():
-			if event.type in (pygame.KEYDOWN, pygame.KEYUP):
-				name = pygame.key.name(event.key)
-				# https://www.pygame.org/docs/ref/key.html
-				if(event.type == pygame.KEYDOWN):
-					#print(name)
-					if(name in self.toggles.keys()):				# Toggles
-						self.toggles[name] = not self.toggles[name]
-						#print(self.toggles[name])
-				self.buttons[name] = event.type == pygame.KEYDOWN	# Held buttons
-		return self.cur
+def is_key_down(key_name):
+	if(key_name in list(buttons.keys())):
+		return buttons[key_name]
+	else:
+		# print("Warning: Not a valid key name: " + key_name)
+		return False
 
-keyboard = gui()
+def make_toggle(key_name, default=False):
+	"""Assign a toggle value to a key, so that it switches only on KEYDOWN events."""
+	toggles[key_name] = default
+	print("Made toggle: " + key_name)
+
+def process_key(key_ob):
+	""" Because pynput is quite low level(and shitty) we have to make our own thing for squeezing something useful out of the key objects."""
+	if str(type(key_ob)) == "<enum 'Key'>":
+		return key_ob._name_
+	else:
+		if 95 < key_ob.vk < 106:
+			return "[%s]" %str(key_ob.vk-96)
+		return key_ob.char
+
+def on_press(key_ob):
+	key = process_key(key_ob)
+	buttons[key] = True
+	if(key in list(toggles.keys())):
+		toggles[key] = not toggles[key]
+		print("Toggled toggle: " + key)
+
+def on_release(key_ob):
+	key = process_key(key_ob)
+	buttons[key] = False
+
+def start():
+	listener = keyboard.Listener(
+		on_press=on_press,
+		on_release=on_release)
+	listener.start()

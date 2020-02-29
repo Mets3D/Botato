@@ -8,7 +8,7 @@ from Training import *
 from Strategy import *
 import Debug
 import Preprocess
-# from keyboard_input import keyboard
+import keyboard_input as Keyboard
 
 # RLBot
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
@@ -19,9 +19,15 @@ from rlbot.utils.game_state_util import GameState, GameInfoState
 from RLUtilities import Simulation
 from RLUtilities.Simulation import Ball, Pitch, ray
 class Botato(BaseAgent):
+	def initialize_keyboard(self):
+		Keyboard.make_toggle('x')
+
 	def initialize_agent(self):
 		super().initialize_agent()
 		
+		Keyboard.start()
+		self.initialize_keyboard()
+
 		#Debug values updated by MoveToRandomPoint, for now.
 		self.ETA = 0				# Time estimated that it will take us to get to target
 		self.start_time = 0			# Time when we start going towards current target
@@ -90,59 +96,60 @@ class Botato(BaseAgent):
 		self.boost_pads = []
 		self.boost_locations = []
 	
-	def keyboard_input():
-		return # TODO: Find a way to implement this without pygame. There is probably a way now, 10 months later.
+	def keyboard_input(self):
+		# TODO: Find a way to implement this without pygame. There is probably a way now, 10 months later.
 		# Debug Input
 		# Controls (You must have the white pygame window in focus!):
 			# x: Toggle taking control of Botato.
 			# WASD to move, Space to jump, Numpad Enter to boost, Left Shift to Powerslide/Air Roll.
 			# Ctrl+S/Ctrl+L to save/load game state.
 			# Numpad 0-9 to load trainings.
-
-		keyboard.update()
-
+		# print(Keyboard.toggles)
 		# Take control of Botato
-		if(keyboard.toggles['x']):
-			self.controller.throttle = keyboard.key_down("w") - keyboard.key_down("s")
+		if(Keyboard.toggles['x']):
+			self.controller.throttle = Keyboard.is_key_down("w") - Keyboard.is_key_down("s")
 			self.controller.pitch = -self.controller.throttle
 
-			self.controller.steer = keyboard.key_down("d") - keyboard.key_down("a")
-			self.controller.handbrake = keyboard.key_down("left shift")
+			self.controller.steer = Keyboard.is_key_down("d") - Keyboard.is_key_down("a")
+			self.controller.handbrake = Keyboard.is_key_down("Key.shift")
 			if(self.controller.handbrake):
 				self.controller.roll = self.controller.steer
 			else:
 				self.controller.yaw = self.controller.steer
 
-			self.controller.jump = keyboard.key_down("space")
-			self.controller.boost = keyboard.key_down("enter")
+			self.controller.jump = Keyboard.is_key_down("Key.space")
+			self.controller.boost = Keyboard.is_key_down("Key.enter")
 
-		# Save/Load State
-		if(keyboard.key_down("left ctrl") and keyboard.key_down("s")):
-			self.saved_state = GameState.create_from_gametickpacket(packet)
-		if(keyboard.key_down("left ctrl") and keyboard.key_down("l")):
-			self.set_game_state(self.saved_state)
 		# Reset current training, without changing randomization.
-		if(keyboard.key_down("r")):
+		if(Keyboard.is_key_down("r")):
 			self.training.reset()
 		# Activate a Training
-		if(keyboard.key_down("[0]")):
+		if(Keyboard.is_key_down("[0]")):
 			self.training = Training(self, "Diagonal Kickoff")
-		elif(keyboard.key_down("[1]")):
+		elif(Keyboard.is_key_down("[1]")):
 			self.training = Training(self, "Straight Kickoff")
-		elif(keyboard.key_down("[2]")):
+		elif(Keyboard.is_key_down("[2]")):
 			self.training = Training(self, "Prediction 1")
-		elif(keyboard.key_down("[3]")):
+		elif(Keyboard.is_key_down("[3]")):
 			self.training = Training(self, "Random Ball Impulse")
 
+		return	# TODO: make save/load work again.
+		# Save/Load State
+		if(Keyboard.is_key_down("ctrl_l") and Keyboard.is_key_down("s")):
+			self.saved_state = GameState.create_from_gametickpacket(packet)
+		if(Keyboard.is_key_down("ctrl_l") and Keyboard.is_key_down("l")):
+			self.set_game_state(self.saved_state)
+
+		return	# TODO: See if this can be made to work again.
 		# Change Game Speed (currently broken in RLBot)
-		if(keyboard.key_down("left ctrl") and keyboard.key_down("[-]")):
+		if(Keyboard.is_key_down("ctrl_l") and Keyboard.is_key_down("-")):
 			#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed-0.1)
 			game_info_state = GameInfoState(game_speed=0.5)
 			game_state = GameState(game_info=game_info_state)
 			self.set_game_state(game_state)
 			#print("Slowing to " + str(packet.game_info.game_speed-0.1))
 			print("Slowing to 0.5")
-		if(keyboard.key_down("left ctrl") and keyboard.key_down("[+]")):
+		if(Keyboard.is_key_down("ctrl_l") and Keyboard.is_key_down("+")):
 			#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed+0.1)
 			game_info_state = GameInfoState(game_speed=1)
 			game_state = GameState(game_info=game_info_state)
@@ -174,6 +181,8 @@ class Botato(BaseAgent):
 			# if(self.index==0):
 			Debug.render_all(self)
 			self.renderer.end_rendering()
+
+			self.keyboard_input()
 
 			# Save a (shallow!!! Vectors aren't saved, just floats!) copy of self, to use in next tick. TODO: we should strive for a design where this is never needed.
 			self.last_self = copy.copy(self)

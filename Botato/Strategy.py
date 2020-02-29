@@ -55,6 +55,8 @@ class Strategy:
 		return car.cs_on_ground(car, cls.path[0], car.controller, 2300)
 		return None
 
+
+
 class Strat_HitBallTowardsTarget(Strategy):
 	name = "Hit Ball Towards Target"
 
@@ -66,16 +68,18 @@ class Strat_HitBallTowardsTarget(Strategy):
 	def find_target(cls, car):
 		# Old code to hit ball towards net.
 		# TODO: Refactor so we can hit ball towards any target
-		# TODO: Aiming while powershooting should probably be fairly differently.
 
+		# Ideally, this Strategy will only become the most viable one when grabbing the target from this other strategy will be good enough. (No turning around or such involved)
 		ball = Strat_TouchPredictedBall.find_target(car)
 
 		car_ball_dist = distance(car, ball).size
 		goal_ball_dist = distance(car.enemy_goal, ball).size
 		car_enemy_goal_dist = distance(car, car.enemy_goal).size
-		# We project a line from the goal towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
-		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the enemy goal) the ball.
+		# We project a line from the target towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
+		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the target) the ball.
 		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
+		# TODO: This works abysmally when Botato is between the ball and the target. (he will hit the ball away from the target)
+		#		And it works just as badly when he's to the side between the ball and the target (he will keep near-missing the ball)
 		goal_ball_vec = car.enemy_goal.location - ball
 		ball_dist_ratio = car_ball_dist/goal_ball_dist
 		desired_distance_from_ball = car_ball_dist/2

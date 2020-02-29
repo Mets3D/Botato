@@ -6,6 +6,7 @@ from Objects import *
 from Utils import *
 from Training import *
 import Strategy
+from Maneuver import *
 import Debug
 import Preprocess
 import keyboard_input as Keyboard
@@ -155,6 +156,10 @@ class Botato(BaseAgent):
 			if not packet.game_info.is_round_active:
 				return self.controller	# Don't calculate anything during replays.
 			
+			game_info_state = GameInfoState(game_speed=6)
+			game_state = GameState(game_info=game_info_state)
+			self.set_game_state(game_state)
+
 			Preprocess.preprocess(self, packet)		# Cleaning up values
 
 			self.renderer.begin_rendering()
@@ -164,8 +169,8 @@ class Botato(BaseAgent):
 			for i in range(0, 30):
 				prediction_slice = self.ball_prediction.slices[i]
 				loc = prediction_slice.physics.location
-				if(abs(loc.y) > 5050):
-					self.training = Training(self, "Random Ball Impulse")
+				# if(abs(loc.y) > 5050):
+				# 	self.training = Training(self, "Random Ball Impulse")
 
 			# Choosing Strategy
 			for s in Strategy.strategies:
@@ -201,8 +206,7 @@ class Botato(BaseAgent):
 			speed_toward_target = (distance_now.size - distance_next.size) * 120
 
 		# Powersliding
-			powerslide = Powerslide.get_output(self, self.active_strategy.target)
-			self.controller.handbrake = powerslide.handbrake# or powerslide1.handbrake
+			M_Powerslide.control(self, self.active_strategy.target)
 
 		# Throttle
 			# TODO: powersliding has different results in certain situations with throttle=0 or throttle=1. Would those be useful?
@@ -339,55 +343,4 @@ class Botato(BaseAgent):
 					controller.boost = True
 			else:
 				controller.boost=False
-
-class Maneuver():	# TODO we could just extend SimpleControllerState so we can just set self.handbrake instead of self.controller.handbrake. Idk.
-	"""Base class for maneuvers. Maneuvers are used by ControllerStates to get to a point in a specific way."""
-	controller = SimpleControllerState()
-
-	@classmethod
-	def get_output(cls, car, target) -> SimpleControllerState:
-		return cls.controller
-
-class Powerslide(Maneuver):
-	"""Two separate yaw thresholds, one for starting and one for ending the powerslide, both are dynamic and based on a bunch of factors that can be tweaked."""
-	# TODO this is still not very good.
-
-	active = False
-	threshold_begin_slide_angle = 90	# decrease this based on speed or whatever.
-	threshold_end_slide_angle = 25		# increase this based on speed or whatever.
-	last_slide_start = 0
-	slide_gap = 1						# Time that has to pass before reactivating. TODO does this work?
-
-	@classmethod
-	def get_output(cls, car, target) -> SimpleControllerState:
-		if(			# Step 2 - Continue Powersliding
-			cls.active
-			and abs(car.yaw_car_to_target) > cls.threshold_end_slide_angle
-		):
-			cls.controller.handbrake = True
-		else:		# Step 3 - Finish powersliding
-			cls.controller.handbrake = False
-			cls.active=False
-
-		if(			# Step 1 - Begin powersliding
-			not cls.active
-			and time.time() - cls.last_slide_start > cls.slide_gap
-		):		# Calculate requirements to begin and end the powerslide.
-			# TODO: The begin threshold will need to go even lower, the faster we are going. This might still be prone to orbiting.
-			cls.threshold_begin_slide_angle = 40
-			end_threshold_yaw_factor = 0.6
-			cls.threshold_end_slide_angle = abs(car.yaw_car_to_target) * end_threshold_yaw_factor
-			
-			if(
-				abs(car.yaw_car_to_target) > cls.threshold_begin_slide_angle
-				and car.location.z < 50
-				and car.wheel_contact
-				and car.speed > 500
-			):
-				cls.active=True
-				cls.last_slide_start = time.time()
-				#print("Starting powerslide...")
-				#print("current angle: " + str(abs(car.yaw_car_to_target)))
-				#print("end angle: " + str(cls.threshold_end_slide_angle))
-
-		return cls.controller
+ 

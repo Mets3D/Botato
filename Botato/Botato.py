@@ -91,14 +91,14 @@ class Botato(BaseAgent):
 		self.boost_locations = []
 	
 	def keyboard_input(self):
-		# TODO: Find a way to implement this without pygame. There is probably a way now, 10 months later.
-		# Debug Input
-		# Controls (You must have the white pygame window in focus!):
+		# Controls
 			# x: Toggle taking control of Botato.
 			# WASD to move, Space to jump, Numpad Enter to boost, Left Shift to Powerslide/Air Roll.
-			# Ctrl+S/Ctrl+L to save/load game state.
+			# Numpad /: Save game state
+			# Numpad *: Load saved state
+			# Numpad +/-: Speed/Slow game
 			# Numpad 0-9 to load trainings.
-		# print(Keyboard.toggles)
+
 		# Take control of Botato
 		if(Keyboard.toggles['x']):
 			self.controller.throttle = Keyboard.is_key_down("w") - Keyboard.is_key_down("s")
@@ -114,11 +114,7 @@ class Botato(BaseAgent):
 			self.controller.jump = Keyboard.is_key_down("space")
 			self.controller.boost = Keyboard.is_key_down("enter")
 
-		# Reset current training, without changing randomization.
-		if(Keyboard.is_key_down("r")):
-			if self.training:
-				self.training.reset()
-		# Activate a Training
+		# Load Training scenarios
 		if(Keyboard.is_key_down("[0]")):
 			self.training = Training(self, "Diagonal Kickoff")
 		elif(Keyboard.is_key_down("[1]")):
@@ -127,6 +123,10 @@ class Botato(BaseAgent):
 			self.training = Training(self, "Prediction 1")
 		elif(Keyboard.is_key_down("[3]")):
 			self.training = Training(self, "Random Ball Impulse")
+		# Reset current training, without changing randomization.
+		if(Keyboard.is_key_down("r")):
+			if self.training:
+				self.training.reset()
 
 		# Save/Load State
 		if(Keyboard.is_key_down("/")):
@@ -136,7 +136,7 @@ class Botato(BaseAgent):
 			print("Loading game state...")
 			self.set_game_state(self.saved_state)
 
-		# Change Game Speed (currently broken in RLBot)
+		# Change Game Speed
 		if(Keyboard.is_key_down("-")):
 			self.game_speed = max(self.game_speed-0.02, 0.05)
 			game_info_state = GameInfoState(game_speed=self.game_speed)

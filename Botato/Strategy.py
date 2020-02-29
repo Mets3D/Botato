@@ -6,6 +6,7 @@ from Objects import *
 from Utils import *
 from Training import *
 import Debug
+from Maneuver import *
 import Preprocess
 # from keyboard_input import keyboard
 
@@ -18,24 +19,16 @@ from rlbot.utils.game_state_util import GameState, GameInfoState
 from RLUtilities import Simulation
 from RLUtilities.Simulation import Ball, Pitch, ray
 
+# TODO: Need to figure out how I can find time to bump and boost - which are things that I don't want to belong to a single strategy - every strategy should be doing these two things when the situation allows for it. Also, avoiding incoming demos.
+
 class Strategy:
 	""" Base Class for Strategies. """
 	
 	# Class Variables
 	name = "StrategyName"
-	bias_boost = 0.0			# How desparately this strategy requires boost.
-	bias_bump = 0.0				# How flexible this strategy is to bumping.
 	viability = 0				# Stores the result of evaluate().
 	target = MyVec3(0, 0, 0)
 	desired_speed = 2300
-	path = [MyVec3(0, 0, 0)]
-	"""
-	@property
-	def target(self):
-		return = MyVec3(0, 0, 0)	# Stores the target location of this strategy.
-	
-	@target.setter:
-	"""	
 
 	# TODO: both of the below methods should only take car as their parameter, but rename it to "agent". It should include everything else, even the ball.
 	@classmethod
@@ -51,11 +44,9 @@ class Strategy:
 
 	@classmethod
 	def control_car(cls, car):
-		""" Choose a ControllerState and run it. """
-		return car.cs_on_ground(car, cls.path[0], car.controller, 2300)
+		""" Set the car's inputs using Maneuvers. """
+		return M_Speed_On_Ground.control(car, cls.target, 2300)
 		return None
-
-
 
 class Strat_HitBallTowardsTarget(Strategy):
 	name = "Hit Ball Towards Target"
@@ -99,7 +90,7 @@ class Strat_HitBallTowardsTarget(Strategy):
 	@classmethod
 	def control_car(cls, car):
 		cls.find_target(car)
-		return car.cs_on_ground(cls.target, car.controller, 2300)
+		return M_Speed_On_Ground.control(car, cls.target, 2300)
 
 class Strat_TouchPredictedBall(Strategy):
 	name = "Touch Predicted Ball"
@@ -125,7 +116,7 @@ class Strat_TouchPredictedBall(Strategy):
 	@classmethod
 	def control_car(cls, car):
 		cls.find_target(car)
-		return car.cs_on_ground(cls.target, car.controller, cls.desired_speed)
+		return M_Speed_On_Ground.control(car, cls.target, 2300)
 
 class Strat_MoveToRandomPoint(Strategy):
 	"""Strategy for testing general movement, without having to worry about picking the target location correctly."""
@@ -160,7 +151,7 @@ class Strat_MoveToRandomPoint(Strategy):
 	@classmethod
 	def control_car(cls, car):
 		cls.find_target(car)
-		return car.cs_on_ground(cls.target, car.controller, cls.desired_speed)
+		return M_Speed_On_Ground.control(car, cls.target, 2300)
 
 class Strat_ArriveWithSpeed(Strategy):
 	"""While working on this, I realized that arriving with a given speed is a task that requires fucking with too many aspects of the code, and also requires simulating the game. So how about I get back to this at a far future date?"""
@@ -259,7 +250,7 @@ class Strat_ArriveWithSpeed(Strategy):
 	@classmethod
 	def control_car(cls, car):
 		cls.find_target(car)
-		return car.cs_on_ground(cls.target, car.controller, 2300)
+		return M_Speed_On_Ground.control(car, cls.target, 2300)
 
 strategies = [
 	Strat_HitBallTowardsTarget,

@@ -174,7 +174,7 @@ def render_all(car):
 			vector_2d_3d(car, car.location + car.velocity, car.location, color=car.renderer.blue(), draw_2d=False)
 
 			# Target Location Vector
-			vector_2d_3d(car, car.active_strategy.target.location, color=car.renderer.white(), draw_2d=True, draw_3d=True)
+			vector_2d_3d(car, car.active_strategy.target, color=car.renderer.white(), draw_2d=True, draw_3d=True)
 			
 			text_2d(car, 10, 240, "Yaw to target: " + str(int(car.yaw_car_to_target)))
 			text_2d(car, 10, 270, "Distance from target: " + str(int(car.distance_from_target)))

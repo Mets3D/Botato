@@ -173,7 +173,7 @@ class Botato(BaseAgent):
 				if(s.viability > self.active_strategy.viability):
 					self.active_strategy = s
 			
-			self.active_strategy.execute(self)
+			self.active_strategy.control_car(self)
 
 			# Debug Render - only for index==0 car.
 			# if(self.index==0):

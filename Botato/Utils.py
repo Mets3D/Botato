@@ -4,6 +4,7 @@ from Unreal import Rotator, MyVec3
 from Objects import *
 
 from rlbot.utils.structures.game_data_struct import GameTickPacket
+from RLUtilities.Simulation import Ball, Pitch, ray
 
 # Constants
 RAD_TO_DEG = 180/math.pi	# TODO make this into a util function.
@@ -118,7 +119,9 @@ def raycast(loc1, loc2, debug=True) -> MyVec3:
 	
 	my_ray = ray(loc1, difference)
 	ray_end = loc1 + difference
-	my_raycast = Pitch.raycast_any(my_ray)
+	myPitch = Pitch()
+	
+	my_raycast = myPitch.raycast_any(my_ray)
 	
 	if(str(my_raycast.start) == str(ray_end)):
 		# If the raycast didn't intersect with anything, return the target location.
@@ -222,9 +225,11 @@ def time_to_reach_velocity(vel):
 def local_coords(origin_object, target_location) -> MyVec3:
 	""" Returns the target location as local coordinates of origin_object."""
 	# Originally by GooseFairy https://github.com/ddthj/Gosling/blob/master/Episode%203%20Code/Util.py
-	x = (target_location - origin_object.location) * origin_object.rotation.matrix[0]
-	y = (target_location - origin_object.location) * origin_object.rotation.matrix[1]
-	z = (target_location - origin_object.location) * origin_object.rotation.matrix[2]
+	origin_loc = MyVec3(origin_object.location)
+	target_location = MyVec3(target_location)
+	x = (target_location - origin_loc) * origin_object.rotation.matrix[0]
+	y = (target_location - origin_loc) * origin_object.rotation.matrix[1]
+	z = (target_location - origin_loc) * origin_object.rotation.matrix[2]
 	return MyVec3(x, y, z)
 
 def sign(x) -> int:

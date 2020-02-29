@@ -44,58 +44,31 @@ class Strategy:
 		viability = 0
 	
 	@classmethod
-	def update_path(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
-		"""Determine the path we want to take to execute the Strategy. The end of the path would usually be the ball, a large boost pad, or our own goal. The rest of the path is usually small boost pads, or target locations that we want to reach in order to line up for a desired ball touch."""
+	def find_target(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
+		"""Determine the path we want to take to control_car the Strategy. The end of the path would usually be the ball, a large boost pad, or our own goal. The rest of the path is usually small boost pads, or target locations that we want to reach in order to line up for a desired ball touch."""
 		# TODO: for now, strategy should be responsible for picking sub-targets like boost and goalpost avoidance, but in the future that could be moved outside of strategies, since it should be the same logic for any strategy.
 		cls.path = []
 
 	@classmethod
-	def execute(cls, car):
+	def control_car(cls, car):
 		""" Choose a ControllerState and run it. """
 		return car.cs_on_ground(car, cls.path[0], car.controller, 2300)
 		return None
 
-class Strat_HitBallTowardsNet2(Strategy):
-	"""Temporary dumb strategy to move the ball towards the enemy goal."""
-	"""Upgraded with ball prediction, maybe."""
+class Strat_HitBallTowardsTarget(Strategy):
+	name = "Hit Ball Towards Target"
 
-	name = "Hit Ball Towards Net"
-	bias_boost = 0.6
-	bias_bump = 0.6
-	
 	@classmethod
 	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
-		cls.viability=0.99
-	
-	@classmethod
-	def update_path(cls, car):
-		soonest_reachable = find_soonest_reachable(car, car.ball_prediction)
-		predicted_ball = soonest_reachable[0]
-		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
-		dist = distance(car.location, predicted_ball.physics.location).size
-		#desired_speed = optimal_speed(dist, dt, car.speed)
-		
-		# Change desired speed so that when dt is higher, make it lower, and when it's lower, make it higher??
-		desired_speed = dist / max(0.01, dt)
-		"""
-		ETA = 2300 / dist	# ETA is the time under which we can get there. For now, using max speed.
-		#if(ETA > dt):		# If 
-		# Let's just say we want to accelerate about 2 seconds before we reach target, and we have a constant acceleration(or average acceleration).
-		average_accel = 1000
-		# We want to apply this acceleration when we get this close to the target
-		#distance_until_start_acceleration = quadratic()
-		
-		desired_speed_at_target = 2300	# This would be calculated based on what we want to do with the ball(shoot it, dribble it, etc) - It could also be set to -1 when the desired speed is not important, or something, idk.
-		time_required_to_reach_target_speed = desired_speed_at_target - car.speed / average_accel # Time it would take to accelerate from our current speed to the desired impact speed
-		if(dt > 3):
-			desired_speed = 1300
-		else:
-			desired_speed = 2300
-		"""
+		cls.viability=1.2
 
-		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
-		
-		return car.cs_on_ground(predicted_ball.physics.location, car.controller, desired_speed)
+	@classmethod
+	def find_target(cls, car):
+		# Old code to hit ball towards net.
+		# TODO: Refactor so we can hit ball towards any target
+		# TODO: Aiming while powershooting should probably be fairly differently.
+
+		ball = Strat_TouchPredictedBall.find_target(car)
 
 		car_ball_dist = distance(car, ball).size
 		goal_ball_dist = distance(car.enemy_goal, ball).size
@@ -103,26 +76,87 @@ class Strat_HitBallTowardsNet2(Strategy):
 		# We project a line from the goal towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
 		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the enemy goal) the ball.
 		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
-		goal_ball_vec = car.enemy_goal.location - ball.location
+		goal_ball_vec = car.enemy_goal.location - ball
 		ball_dist_ratio = car_ball_dist/goal_ball_dist
 		desired_distance_from_ball = car_ball_dist/2
 		
 		car.location - car.enemy_goal.location
 		
-		cls.target = ball.location - (goal_ball_vec.normalized * desired_distance_from_ball)
+		cls.target = ball - (goal_ball_vec.normalized * desired_distance_from_ball)
 		cls.target[2]=17
 		target_obj = GameObject()
-		target_obj.location = raycast(cls.target, ball.location)
+		target_obj.location = raycast(cls.target, ball)
 
 		# TODO Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
 		# TODO could also aim at the opposite corner of the net rather than the center.
 		# TODO avoid hitting ball into our own net, but probably don't do this inside this strategy. Instead, in those situations, this shouldn't be the active strategy to begin with.
 
+		return cls.target
+	@classmethod
+	def control_car(cls, car):
+		cls.find_target(car)
 		return car.cs_on_ground(cls.target, car.controller, 2300)
+
+class Strat_TouchPredictedBall(Strategy):
+	name = "Touch Predicted Ball"
 	
 	@classmethod
-	def execute(cls, car):
-		return cls.update_path(car)
+	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
+		cls.viability=1.2
+	
+	@classmethod
+	def find_target(cls, car):
+		soonest_reachable = find_soonest_reachable(car, car.ball_prediction)
+		predicted_ball = soonest_reachable[0]
+		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
+		dist = distance(car.location, predicted_ball.physics.location).size
+		
+		# Change desired speed so that when dt is higher, make it lower, and when it's lower, make it higher??
+		cls.desired_speed = dist / max(0.01, dt)
+		cls.target = MyVec3(predicted_ball.physics.location)
+		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
+
+		return cls.target
+	
+	@classmethod
+	def control_car(cls, car):
+		cls.find_target(car)
+		return car.cs_on_ground(cls.target, car.controller, cls.desired_speed)
+
+class Strat_MoveToRandomPoint(Strategy):
+	"""Strategy for testing general movement, without having to worry about picking the target location correctly."""
+	
+	name = "Move To Random Point"
+	bias_boost = 0.6
+	bias_bump = 0.6
+	
+	@classmethod
+	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
+		cls.viability=1.1
+	
+	@classmethod
+	def find_target(cls, car):
+		car_target_dist = (car.location - cls.target).size
+
+		if(car_target_dist < 200 or cls.target.x==0):
+			# Pick a new target.
+			arena = MyVec3(8200*.9, 10280*.9, 2050*0.1)
+			random_point = MyVec3( (random.random()-0.5) * arena.x, (random.random()-0.5) * arena.y, 200 )
+			
+			cls.desired_speed = 500+random.random()*1800
+			cls.desired_speed = 2300
+			dist = distance(car.location, random_point).size
+			car.ETA = distance_to_time(ACCEL_BOOST, dist, car.speed)
+			car.start_time = time.time()
+
+			cls.target = random_point
+
+		return cls.target
+	
+	@classmethod
+	def control_car(cls, car):
+		cls.find_target(car)
+		return car.cs_on_ground(cls.target, car.controller, cls.desired_speed)
 
 class Strat_ArriveWithSpeed(Strategy):
 	"""While working on this, I realized that arriving with a given speed is a task that requires fucking with too many aspects of the code, and also requires simulating the game. So how about I get back to this at a far future date?"""
@@ -133,9 +167,6 @@ class Strat_ArriveWithSpeed(Strategy):
 	# 3. If the speed at arrival is not to our liking, try a different prediction, until it's close enough to the desired.
 
 	name = "Arrive With Speed"
-	bias_boost = 0.6
-	bias_bump = 0.6
-	desired_speed = 2300
 	
 	@classmethod
 	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
@@ -153,7 +184,7 @@ class Strat_ArriveWithSpeed(Strategy):
 		# If the time is too short, it must mean we're already accelerating into the shot.
 
 	@classmethod
-	def update_path(cls, car):
+	def find_target(cls, car):
 		soonest_reachable = find_soonest_reachable(car, car.ball_prediction)
 		predicted_ball = soonest_reachable[0]
 		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
@@ -216,80 +247,18 @@ class Strat_ArriveWithSpeed(Strategy):
 
 		# What does "high" and "low" mean? I think it's a function of the old desired_speed, so distance/dt? If arrival speed is higher than that, we need to take it slow then accelerate at the end. If it's lower than that, we need to do one of the deceleration methods.
 
-
-
 		#time_to_accelerate = 
 		# Remember that if we want to dodge into the ball, we can 
-
 		
 		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
-		
-		return car.cs_on_ground(predicted_ball.physics.location, car.controller, cls.desired_speed)
-
-		# Old code to hit ball towards net.
-		# TODO: Refactor so we can hit ball towards any target
-		# TODO: Aiming while powershooting should probably be fairly differently.
-		car_ball_dist = distance(car, ball).size
-		goal_ball_dist = distance(car.enemy_goal, ball).size
-		car_enemy_goal_dist = distance(car, car.enemy_goal).size
-		# We project a line from the goal towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
-		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the enemy goal) the ball.
-		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
-		goal_ball_vec = car.enemy_goal.location - ball.location
-		ball_dist_ratio = car_ball_dist/goal_ball_dist
-		desired_distance_from_ball = car_ball_dist/2
-		
-		car.location - car.enemy_goal.location
-		
-		cls.target = ball.location - (goal_ball_vec.normalized * desired_distance_from_ball)
-		cls.target[2]=17
-		target_obj = GameObject()
-		target_obj.location = raycast(cls.target, ball.location)
-
-		# TODO Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
-		# TODO could also aim at the opposite corner of the net rather than the center.
-		# TODO avoid hitting ball into our own net, but probably don't do this inside this strategy. Instead, in those situations, this shouldn't be the active strategy to begin with.
-
+	
+	@classmethod
+	def control_car(cls, car):
+		cls.find_target(car)
 		return car.cs_on_ground(cls.target, car.controller, 2300)
-	
-	@classmethod
-	def execute(cls, car):
-		return cls.update_path(car)
-
-class Strat_MoveToRandomPoint(Strategy):
-	"""Strategy for testing general movement, without having to worry about picking the target location correctly."""
-	
-	name = "Move To Random Point"
-	bias_boost = 0.6
-	bias_bump = 0.6
-	
-	@classmethod
-	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
-		cls.viability=1.1
-	
-	@classmethod
-	def update_path(cls, car):
-		car_target_dist = (car.location - cls.target).size
-
-		if(car_target_dist < 200 or cls.target.x==0):
-			# Pick a new target.
-			arena = MyVec3(8200*.9, 10280*.9, 2050*0.1)
-			random_point = MyVec3( (random.random()-0.5) * arena.x, (random.random()-0.5) * arena.y, 200 )
-			
-			cls.desired_speed = 500+random.random()*1800
-			cls.desired_speed = 2300
-			dist = distance(car.location, random_point).size
-			car.ETA = distance_to_time(ACCEL_BOOST, dist, car.speed)
-			car.start_time = time.time()
-
-			cls.target = random_point
-	
-	@classmethod
-	def execute(cls, car):
-		cls.update_path(car)
-		return car.cs_on_ground(cls.target, car.controller, cls.desired_speed)
 
 strategies = [
-	Strat_HitBallTowardsNet2,
+	Strat_HitBallTowardsTarget,
+	Strat_TouchPredictedBall,
 	Strat_MoveToRandomPoint,
 ]

@@ -10,7 +10,7 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket, Vector3
 import time
 
 def preprocess(self, packet: GameTickPacket):
-
+	self.packet = packet
 	self.controller = SimpleControllerState()
 
 	# Ball

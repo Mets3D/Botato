@@ -183,15 +183,19 @@ def render_all(car):
 
 	# Render prediction (hue indicates dt, red=near future, blue=distant future)
 		if car.ball_prediction is not None and debug_prediction:
-			for i in range(0, 330):
-				prediction_slice = car.ball_prediction.slices[i]
-				next_slice = car.ball_prediction.slices[i+1]
-				color_rgb = colorsys.hsv_to_rgb(float(i/500), 1.0, 1.0)
-				render_color = car.renderer.create_color(255, int(color_rgb[0]*255), int(color_rgb[1]*255), int(color_rgb[2]*255))
-				loc = prediction_slice.physics.location
-				next_loc = next_slice.physics.location
-				#car.renderer.draw_rect_3d(loc, 5, 5, True, render_color)
-				car.renderer.draw_line_3d(loc, next_loc, render_color)
+			if True:	# Rainbow rendering - expensive!
+				for i in range(0, 330):
+					prediction_slice = car.ball_prediction.slices[i]
+					next_slice = car.ball_prediction.slices[i+1]
+					color_rgb = colorsys.hsv_to_rgb(float(i/500), 1.0, 1.0)
+					render_color = car.renderer.create_color(255, int(color_rgb[0]*255), int(color_rgb[1]*255), int(color_rgb[2]*255))
+					loc = prediction_slice.physics.location
+					next_loc = next_slice.physics.location
+					#car.renderer.draw_rect_3d(loc, 5, 5, True, render_color)
+					car.renderer.draw_line_3d(loc, next_loc, render_color)
+			else:
+				locs = [s.physics.location for s in car.ball_prediction.slices]
+				car.renderer.draw_polyline_3d(locs, car.renderer.red())
 				
 	# Render Car Transforms
 		vec2str = lambda vec: str(int(vec.x)) + " " + str(int(vec.y)) + " " + str(int(vec.z))

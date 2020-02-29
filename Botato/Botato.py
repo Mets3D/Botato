@@ -36,14 +36,10 @@ class Botato(BaseAgent):
 		self.controller = SimpleControllerState()
 		self.ball_prediction = None
 
-		# RLUtilities
-		# Game.set_mode("soccar")
-		# self.game = Game(index, team)
-
 		# Debug Tools
-		# keyboard.make_toggle("x")
 		self.training = None
 		self.saved_state = None			# For saving and loading states.
+		self.game_speed = 1.0
 
 		self.active_strategy = Strat_MoveToRandomPoint
 
@@ -74,8 +70,6 @@ class Botato(BaseAgent):
 		# Car values
 		self.location = MyVec3(0, 0, 0)
 		self.rotation = Rotator()
-		print("self.rotation should exist!!!!!!!!!!!!!")
-		print(self.rotation)
 		self.velocity = MyVec3(0, 0, 0)
 		
 		self.speed = 0
@@ -111,18 +105,19 @@ class Botato(BaseAgent):
 			self.controller.pitch = -self.controller.throttle
 
 			self.controller.steer = Keyboard.is_key_down("d") - Keyboard.is_key_down("a")
-			self.controller.handbrake = Keyboard.is_key_down("Key.shift")
+			self.controller.handbrake = Keyboard.is_key_down("shift")
 			if(self.controller.handbrake):
 				self.controller.roll = self.controller.steer
 			else:
 				self.controller.yaw = self.controller.steer
 
-			self.controller.jump = Keyboard.is_key_down("Key.space")
-			self.controller.boost = Keyboard.is_key_down("Key.enter")
+			self.controller.jump = Keyboard.is_key_down("space")
+			self.controller.boost = Keyboard.is_key_down("enter")
 
 		# Reset current training, without changing randomization.
 		if(Keyboard.is_key_down("r")):
-			self.training.reset()
+			if self.training:
+				self.training.reset()
 		# Activate a Training
 		if(Keyboard.is_key_down("[0]")):
 			self.training = Training(self, "Diagonal Kickoff")
@@ -133,36 +128,38 @@ class Botato(BaseAgent):
 		elif(Keyboard.is_key_down("[3]")):
 			self.training = Training(self, "Random Ball Impulse")
 
-		return	# TODO: make save/load work again.
 		# Save/Load State
-		if(Keyboard.is_key_down("ctrl_l") and Keyboard.is_key_down("s")):
-			self.saved_state = GameState.create_from_gametickpacket(packet)
-		if(Keyboard.is_key_down("ctrl_l") and Keyboard.is_key_down("l")):
+		if(Keyboard.is_key_down("/")):
+			print("Saving game state...")
+			self.saved_state = GameState.create_from_gametickpacket(self.packet)
+		if(Keyboard.is_key_down("*")):
+			print("Loading game state...")
 			self.set_game_state(self.saved_state)
 
-		return	# TODO: See if this can be made to work again.
 		# Change Game Speed (currently broken in RLBot)
-		if(Keyboard.is_key_down("ctrl_l") and Keyboard.is_key_down("-")):
-			#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed-0.1)
-			game_info_state = GameInfoState(game_speed=0.5)
+		if(Keyboard.is_key_down("-")):
+			self.game_speed = max(self.game_speed-0.02, 0.05)
+			game_info_state = GameInfoState(game_speed=self.game_speed)
 			game_state = GameState(game_info=game_info_state)
 			self.set_game_state(game_state)
-			#print("Slowing to " + str(packet.game_info.game_speed-0.1))
-			print("Slowing to 0.5")
-		if(Keyboard.is_key_down("ctrl_l") and Keyboard.is_key_down("+")):
-			#game_info_state = GameInfoState(game_speed=packet.game_info.game_speed+0.1)
-			game_info_state = GameInfoState(game_speed=1)
+			print("Slowing to %f" %self.game_speed)
+		if(Keyboard.is_key_down("+")):
+			self.game_speed += 0.02
+			game_info_state = GameInfoState(game_speed=self.game_speed)
 			game_state = GameState(game_info=game_info_state)
 			self.set_game_state(game_state)
-			#print("Speeding to " + str(packet.game_info.game_speed+0.1))
-			print("Speeding to 1")
+			print("Speeding to %f" %self.game_speed)
 
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
+			if not packet.game_info.is_round_active:
+				return self.controller	# Don't calculate anything during replays.
+			
 			Preprocess.preprocess(self, packet)		# Cleaning up values
 
 			self.renderer.begin_rendering()
 			self.ball_prediction = self.get_ball_prediction_struct()
-				# Make sure ball doesn't get scored :P
+			
+			# Make sure ball doesn't get scored :P
 			for i in range(0, 30):
 				prediction_slice = self.ball_prediction.slices[i]
 				loc = prediction_slice.physics.location

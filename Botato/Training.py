@@ -78,7 +78,28 @@ class Training():
 		if(not training_name):
 			training_name = self.training_name
 		
-		car_state = CarState(physics=Physics(velocity=self.car_vel, rotation=self.car_rot, location=self.car_loc), boost_amount=self.car_boost)
-		ball_state = BallState(Physics(velocity=self.ball_vel, location=self.ball_loc, angular_velocity=self.ball_av))
-		self.game_state = GameState(ball=ball_state, cars={self.car.index: car_state})
+		car_state = CarState(
+			physics = Physics(
+				velocity = self.car_vel, 
+				rotation = self.car_rot, 
+				location = self.car_loc
+			), 
+			boost_amount = self.car_boost
+		)
+
+		ball_state = BallState(
+			Physics(
+				velocity = self.ball_vel, 
+				location = self.ball_loc, 
+				angular_velocity = self.ball_av
+			)
+		)
+
+		self.game_state = GameState(
+			ball = ball_state, 
+			cars = {
+				self.car.index: car_state
+			}
+		)
+
 		self.car.set_game_state(self.game_state)

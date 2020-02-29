@@ -127,15 +127,12 @@ class Strat_HitBallTowardsNet2(Strategy):
 class Strat_ArriveWithSpeed(Strategy):
 	"""While working on this, I realized that arriving with a given speed is a task that requires fucking with too many aspects of the code, and also requires simulating the game. So how about I get back to this at a far future date?"""
 	
-	"""Here's how it would be done, though:"""
-	# 1. For each ball prediction, simulate our car trying to reach it as fast as possible, and see if it does. And by "our car", I mean our car, with our implementation of the controls. This would also include turning, and the strategy updating the target location, everything. So we could set a requirement for arriving at a given angle also.
+	"""Here's how I would do it, though:"""
+	# 1. For each ball prediction, simulate our car trying to reach it as fast as possible, and see if it does. This would also include turning, and the strategy updating the target location, everything. So we could set a requirement for arriving at a given angle also.
 	# 2. If it's reachable, see how much time it took to reach it, and what was the speed at arrival.
 	# 3. If the speed at arrival is not to our liking, try a different prediction, until it's close enough to the desired.
 
-	"""Temporary dumb strategy to move the ball towards the enemy goal."""
-	"""Upgraded with ball prediction, maybe."""
-
-	name = "Hit Ball Towards Net"
+	name = "Arrive With Speed"
 	bias_boost = 0.6
 	bias_bump = 0.6
 	desired_speed = 2300
@@ -272,34 +269,20 @@ class Strat_MoveToRandomPoint(Strategy):
 	
 	@classmethod
 	def update_path(cls, car):
-		target_obj = GameObject()
-
-		prediction = car.ball_prediction
 		car_target_dist = (car.location - cls.target).size
 
 		if(car_target_dist < 200 or cls.target.x==0):
+			# Pick a new target.
 			arena = MyVec3(8200*.9, 10280*.9, 2050*0.1)
 			random_point = MyVec3( (random.random()-0.5) * arena.x, (random.random()-0.5) * arena.y, 200 )
-			# goal1 = MyVec3( 1, arena.y*0.4, 17)
-			# random_point = MyVec3( 1, -arena.y*0.4, 17)
-			# if(random.random()>0.5):
-			# 	random_point=goal1
 			
-			# Pick a speed with which we want to get there. (In the future this would be calculated based on the prediction of how far in time(da future) the ball is going to be where we need it to be)
 			cls.desired_speed = 500+random.random()*1800
 			cls.desired_speed = 2300
 			dist = distance(car.location, random_point).size
 			car.ETA = distance_to_time(ACCEL_BOOST, dist, car.speed)
 			car.start_time = time.time()
 
-			#cls.desired_speed = 1300
-			#print("desired speed: " + str(cls.desired_speed))
-			
 			cls.target = random_point
-		else:
-			pass
-
-		# super().update_path(car, car.teammates, car.opponents, car.ball, car.boost_pads, car.active_strategy, car.controller, car.renderer)
 	
 	@classmethod
 	def execute(cls, car):
@@ -308,8 +291,5 @@ class Strat_MoveToRandomPoint(Strategy):
 
 strategies = [
 	Strat_HitBallTowardsNet2,
-	#Strat_MoveToRandomPoint,
-	#Strat_Shooting,
-	#Strat_Saving,
-	#Strat_Clearing,
+	Strat_MoveToRandomPoint,
 ]

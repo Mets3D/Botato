@@ -1,6 +1,7 @@
 from Utils import *
 from Unreal import *
 import Botato
+import Strategy
 import colorsys
 from Objects import arena
 
@@ -9,7 +10,7 @@ local_ratio = 40				# Divide local coords by this number, in order to fit them o
 global_2d_offset = (600, -200)	# Offset all 2D rendering by this amount, from the center of the screen, in RLBot's space. So leaving this as (0,0) will draw everything relative to the center of the screen(as defined by resolution above), whereas setting it to (200, 200) will push it 200px left and 200px down. # TODO: This is dumb, delete it.
 
 # Debug toggles
-debug_strats 		= False
+debug_strats 		= True
 debug_controls 		= True
 debug_dodge 		= True
 debug_prediction 	= True
@@ -218,7 +219,7 @@ def render_all(car):
 
 	# Render Strategies
 		if(debug_strats):
-			for i, s in enumerate(Botato.strategies):
+			for i, s in enumerate(Strategy.strategies):
 				color = car.renderer.white()
 				if(s==car.active_strategy):
 					color = car.renderer.lime()

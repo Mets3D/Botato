@@ -5,7 +5,7 @@ from Unreal import Rotator, MyVec3
 from Objects import *
 from Utils import *
 from Training import *
-from Strategy import *
+import Strategy
 import Debug
 import Preprocess
 import keyboard_input as Keyboard
@@ -18,14 +18,15 @@ from rlbot.utils.game_state_util import GameState, GameInfoState
 # RLUtilities
 from RLUtilities import Simulation
 from RLUtilities.Simulation import Ball, Pitch, ray
+
 class Botato(BaseAgent):
 	def initialize_keyboard(self):
+		Keyboard.start()
 		Keyboard.make_toggle('x')
 
 	def initialize_agent(self):
 		super().initialize_agent()
 		
-		Keyboard.start()
 		self.initialize_keyboard()
 
 		#Debug values updated by MoveToRandomPoint, for now.
@@ -41,7 +42,7 @@ class Botato(BaseAgent):
 		self.saved_state = None			# For saving and loading states.
 		self.game_speed = 1.0
 
-		self.active_strategy = Strat_MoveToRandomPoint
+		self.active_strategy = Strategy.Strat_MoveToRandomPoint
 
 		self.time_old = 1
 		self.dt = 1
@@ -167,7 +168,7 @@ class Botato(BaseAgent):
 					self.training = Training(self, "Random Ball Impulse")
 
 			# Choosing Strategy
-			for s in strategies:
+			for s in Strategy.strategies:
 				s.evaluate(self, self.teammates, self.opponents, ball, self.boost_pads, self.active_strategy)
 				if(s.viability > self.active_strategy.viability):
 					self.active_strategy = s

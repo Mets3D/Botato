@@ -277,7 +277,9 @@ def inside_arena(location) -> bool:
 	location = loc(location)
 	return abs(location.x) < arena.x and abs(location.y) < arena.y
 
-def reachable(self, location, time_left) -> bool:
+def reachable_simple(self, location, time_left) -> bool:
+	if time_left==0:
+		return False
 	location = loc(location)
 	speed = 1400
 	if self.boost > 30 or self.supersonic:

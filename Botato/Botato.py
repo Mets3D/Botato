@@ -153,6 +153,7 @@ class Botato(BaseAgent):
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
 			Preprocess.preprocess(self, packet)		# Cleaning up values
 
+			self.renderer.begin_rendering()
 			self.ball_prediction = self.get_ball_prediction_struct()
 				# Make sure ball doesn't get scored :P
 			for i in range(0, 30):
@@ -171,7 +172,6 @@ class Botato(BaseAgent):
 
 			# Debug Render - only for index==0 car.
 			# if(self.index==0):
-			self.renderer.begin_rendering()
 			Debug.render_all(self)
 			self.renderer.end_rendering()
 

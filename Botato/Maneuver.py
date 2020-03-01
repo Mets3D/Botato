@@ -4,7 +4,7 @@ from Unreal import Rotator, MyVec3
 from Objects import *
 from Utils import *
 from Training import *
-import time
+import time	# TODO: Instead of using time.time(), we should be getting the game time from the gametickpacket, to make sure everything works under different framerates/game speeds.
 
 def get_yaw_to_target(car, target):
 	# This gives better results than local coords yaw difference, particularly when on the wall.
@@ -82,6 +82,9 @@ class M_Dodge(Maneuver):
 	@classmethod
 	def get_output(cls, car, target, desired_speed=2300) -> SimpleControllerState:
 		controller = cls.controller
+		controller.pitch = car.controller.pitch
+		controller.yaw = car.controller.yaw
+		controller.roll = car.controller.roll
 
 		yaw_car_to_target = get_yaw_to_target(car, target)
 
@@ -100,8 +103,9 @@ class M_Dodge(Maneuver):
 		dodge_speed_threshold = 1000					# Don't try to dodge when the car is going slower than this.
 		speed_toward_target_ratio_threshold = 0.97		# Don't try to dodge if most of our speed isn't towards the target. TODO: This number seems unneccessarily high.
 
-		dodge_delay = 0.18 - (2300-car.speed)/20000		# Time between jumping and flipping. If this value is too low, it causes Botato to scrape his nose on the floor. If this value is too high, Botato will dodge slower than optimal. The value has to be higher when our speed is lower. This calculates to 0.13 when our speed is 1300, and to 0.18 when our speed is 2300.
-		
+		dodge_delay = 0.20 - (2300-car.speed)/20000		# Time between jumping and flipping. If this value is too low, it causes Botato to scrape his nose on the floor. If this value is too high, Botato will dodge slower than optimal. The value has to be higher when our speed is lower. This calculates to 0.13 when our speed is 1300, and to 0.18 when our speed is 2300.
+		# TODO: I tried increasing this, but he's still scraping his nose on the floor, wtf?
+
 		overshoot_threshold = 500	# We're allowed to overshoot the target by this distance. TODO: parameterize, implement
 		
 		local_target_unit_vec = local_coords(car, car.active_strategy.target).normalized
@@ -146,35 +150,38 @@ class M_Dodge(Maneuver):
 				controller.yaw=0
 		
 		# Step 1 - Jump
-		elif( 	False and 
-				car.speed > dodge_speed_threshold									# We are going fast enough (Dodging while slow is not worth it)
-				and abs(car.av.z) < 1500											# We aren't spinning like crazy
-				and car.speed+500 < desired_speed									# TODO: At high enough distances, it could be worth it to dodge and over-accelerate, then decelerate to correct for it.
-				and speed_toward_target_ratio > speed_toward_target_ratio_threshold # We are moving towards the target with most of our speed. TODO: this should be covered by angular velocity checks instead, I feel like.
-				and yaw_car_to_target < 40											# We are more or less facing the target.
-				and distance_from_target > 1500 									# We are far enough away from the target TODO: dodge_distance + overshoot_threshold
-				and car.location.z < 18 											# We are on the floor
-				and car.wheel_contact 												# We are touching the floor (slightly redundant, yes)
-				and time.time() - car.last_wheel_contact > cls.wheel_contact_delay 	# We haven't just landed (Trying to jump directly after landing will result in disaster, except after Wavedashing).
-				and abs(controller.steer) < dodge_steering_threshold				# We aren't steering very hard
-				and controller.handbrake == False									# We aren't powersliding
-			): 
-				#print("speed: " + str(car.speed))
-				#print("ratio: " + str(speed_toward_target_ratio))
-				#print("expected dodge distance: " )
-				#print(dodge_distance)
-				car.last_jump_loc = car.location
-				controller.jump = True
-				controller.pitch = -1
-				cls.jumped = True
-				cls.last_jump = time.time()
+		elif(all([
+				car.speed > dodge_speed_threshold								,# We are going fast enough (Dodging while slow is not worth it)
+				abs(car.av.z) < 1500											,# We aren't spinning like crazy
+				car.speed+500 < desired_speed									,# TODO: At high enough distances, it could be worth it to dodge and over-accelerate, then decelerate to correct for it.
+				speed_toward_target_ratio > speed_toward_target_ratio_threshold	,# We are moving towards the target with most of our speed. TODO: this should be covered by angular velocity checks instead, I feel like.
+				yaw_car_to_target < 40											,# We are more or less facing the target.
+				distance_from_target > 1500										,# We are far enough away from the target TODO: dodge_distance + overshoot_threshold
+				car.location.z < 18												,# We are on the floor
+				car.wheel_contact												,# We are touching the floor (slightly redundant, yes)
+				time.time() - car.last_wheel_contact > cls.wheel_contact_delay	,# We haven't just landed (Trying to jump directly after landing will result in disaster, except after Wavedashing).
+				abs(controller.steer) < dodge_steering_threshold				,# We aren't steering very hard
+				car.controller.handbrake == False								,# We aren't powersliding
+		])): 
+			#print("speed: " + str(car.speed))
+			#print("ratio: " + str(speed_toward_target_ratio))
+			#print("expected dodge distance: " )
+			#print(dodge_distance)
+			cls.last_jump_loc = car.location
+			controller.jump = True
+			controller.pitch = -1
+			cls.jumped = True
+			cls.last_jump = time.time()
 		
 		return cls.controller
 		
 	@classmethod
 	def control(cls, car, target, desired_speed=2300):
 		cls.get_output(car, target, desired_speed)
-		car.controller.throttle = cls.controller.throttle
+		car.controller.jump = cls.controller.jump
+		car.controller.pitch = cls.controller.pitch
+		car.controller.yaw = cls.controller.yaw
+		car.controller.roll = cls.controller.roll
 
 class M_Boost(Maneuver):
 	@classmethod
@@ -217,7 +224,7 @@ class M_Throttle(Maneuver):
 
 		distance_from_target = (car.location - target).length
 		yaw_car_to_target = get_yaw_to_target(car, target)
-		
+
 		if False:
 			# TODO: When we are very close to the target and facing away from it, we should probably not throttle much. (Although throttling zero will just result in stopping)
 			if(
@@ -278,7 +285,6 @@ class M_Powerslide(Maneuver):
 						car.wheel_contact,
 						car.speed > 500,
 				]):
-				print("Begin powerslide!")
 				cls.active=True
 				cls.last_slide_start = time.time()
 				#print("Starting powerslide...")

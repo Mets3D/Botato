@@ -67,11 +67,9 @@ class Strat_Defense(Strategy):
 		cls.target = car.own_goal.location
 
 		need_to_avoid_ball = will_intersect(car)
-		
-		print(car.packet.__dict__)
 
 		if need_to_avoid_ball and distance(car, ball) < 180:
-			car.send_quick_chat(QuickChats.CHAT_EVERYONE, QuickChats.Apologies_Whoops)
+			car.send_quick_chats(QuickChats.CHAT_EVERYONE, QuickChats.Apologies_Whoops)
 		
 		# NEXT UP:
 		# If our path is intersecting the ball, avoid the ball (In the future, we might want to hit the ball towards our own corner, actually)

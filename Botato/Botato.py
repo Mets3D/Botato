@@ -147,10 +147,12 @@ class Botato(BaseAgent):
 			self.set_game_state(game_state)
 			print("Speeding to %f" %self.game_speed)
 
-	# def send_quick_chats(self, chat_mode, chat_code, number=1, timer=1):
-	# 	if self.last_quick_chat < self.packet.
-	# 	for i in range(0, number):
-	# 		self.send_quick_chat(chat_mode, chat_code)
+	def send_quick_chats(self, chat_mode, chat_code, number=1, timer=1):
+		# TODO: this can be improved... maybe a separate thread?
+		if self.last_quick_chat + timer < self.game_seconds:
+			for i in range(0, number):
+				self.send_quick_chat(chat_mode, chat_code)
+				self.last_quick_chat = self.game_seconds
 
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
 			# game_info_state = GameInfoState(game_speed=6)

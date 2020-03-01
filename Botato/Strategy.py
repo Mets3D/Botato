@@ -66,6 +66,13 @@ class Strat_Defense(Strategy):
 		# First target should just be our own goal.
 		cls.target = car.own_goal.location
 
+		need_to_avoid_ball = will_intersect(car)
+		
+		print(car.packet.__dict__)
+
+		if need_to_avoid_ball and distance(car, ball) < 180:
+			car.send_quick_chat(QuickChats.CHAT_EVERYONE, QuickChats.Apologies_Whoops)
+		
 		# NEXT UP:
 		# If our path is intersecting the ball, avoid the ball (In the future, we might want to hit the ball towards our own corner, actually)
 		# How to make this work with a predicted ball?
@@ -93,9 +100,9 @@ class Strat_HitBallTowardsTarget(Strategy):
 		# Ideally, this Strategy will only become the most viable one when grabbing the target from this other strategy will be good enough. (No turning around or such involved)
 		ball = Strat_TouchPredictedBall.find_target(car)
 
-		car_ball_dist = distance(car, ball).size
-		goal_ball_dist = distance(car.enemy_goal, ball).size
-		car_enemy_goal_dist = distance(car, car.enemy_goal).size
+		car_ball_dist = distance(car, ball)
+		goal_ball_dist = distance(car.enemy_goal, ball)
+		car_enemy_goal_dist = distance(car, car.enemy_goal)
 		# We project a line from the target towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
 		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the target) the ball.
 		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
@@ -138,7 +145,7 @@ class Strat_TouchPredictedBall(Strategy):
 			return
 		predicted_ball = soonest_reachable[0]
 		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
-		dist = distance(car.location, predicted_ball.physics.location).size
+		dist = distance(car.location, predicted_ball.physics.location)
 		
 		# Change desired speed so that when dt is higher, make it lower, and when it's lower, make it higher??
 		cls.desired_speed = dist / max(0.01, dt)
@@ -174,7 +181,7 @@ class Strat_MoveToRandomPoint(Strategy):
 			
 			cls.desired_speed = 500+random.random()*1800
 			cls.desired_speed = 2300
-			dist = distance(car.location, random_point).size
+			dist = distance(car.location, random_point)
 			car.ETA = distance_to_time(ACCEL_BOOST, dist, car.speed)
 			car.start_time = time.time()
 
@@ -220,7 +227,7 @@ class Strat_ArriveWithSpeed(Strategy):
 			return
 		predicted_ball = soonest_reachable[0]
 		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
-		dist = distance(car.location, predicted_ball.physics.location).size
+		dist = distance(car.location, predicted_ball.physics.location)
 		goal_average_speed = dist / max(0.01, dt)	# This MUST be our average speed on the way there.
 		
 		arrival_speed = 2300#-500		# Desired speed at arrival
@@ -239,7 +246,7 @@ class Strat_ArriveWithSpeed(Strategy):
 		time_to_desired_speed = accel_dist_time[1]		# Time it would take until we reach the target speed
 		
 		ground_loc = MyVec3(ball.location.x, ball.location.y, 50)
-		dist = distance(car.location, ground_loc).size
+		dist = distance(car.location, ground_loc)
 		
 		distance_before_accel = dist - distance_to_desired_speed	# Distance we want to go before we start accelerating
 		target_steady_speed = distance_before_accel / (dt+0.0000001)		# Speed we want to maintain before we start accelerating for the arrival speed

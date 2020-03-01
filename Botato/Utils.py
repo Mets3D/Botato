@@ -2,8 +2,8 @@ import time, cmath, math
 
 from Unreal import Rotator, MyVec3
 from Objects import *
+from rlbot.utils.structures.quick_chats import QuickChats
 
-from rlbot.utils.structures.game_data_struct import GameTickPacket
 from RLUtilities.Simulation import Ball, Pitch, ray
 
 # Constants
@@ -22,12 +22,25 @@ def will_intersect(car):
 	prediction = car.ball_prediction
 
 	car_loc = car.location
+	prev_car_loc = MyVec3(car_loc)
+	dt = 1/60
+	collision_threshold = 175
+
+
+
+	# Draw a line in the direction we're moving
+	car.renderer.draw_line_3d(car_loc, car_loc+car.velocity, car.renderer.green())
 
 	for i in range(0, 150):
 		ps = prediction.slices[i]
-		ball_loc = ps.physics.location
-		
-
+		ball_loc = MyVec3(ps.physics.location)
+		car_towards_ball = (ball_loc - car_loc).normalize()
+		car_loc += car.velocity * dt
+		if distance(car_loc, ball_loc) < collision_threshold:
+			car.renderer.draw_line_3d(prev_car_loc, car_loc, car.renderer.red())
+			return True
+	
+	return False
 
 def between(x, val1, val2):
 	"""Find whether x is between val1 and val2."""
@@ -69,7 +82,7 @@ def reachable(car, location, time_left):
 		return False	# No aerialing :)
 	else: 
 		ground_loc = MyVec3(location.x, location.y, 50)
-		dist = distance(car.location, ground_loc).size
+		dist = distance(car.location, ground_loc)
 		if(dist/(time_left+0.001) < 2000):
 			return True
 	
@@ -82,7 +95,7 @@ def reachable(car, location, time_left):
 	boost_to_target_time = (throttle_accel + ACCEL_BOOST) / max(10, (arrival_speed - car.speed)) 	# Time it would take to reach target speed with boost
 	distance_while_boosting = 0#accel_distance(car.speed, car.boost, boost_to_target_time)	# Distance we would make while we accelerate to the target
 	ground_loc = MyVec3(location.x, location.y, 50)
-	dist = distance(car.location, ground_loc).size
+	dist = distance(car.location, ground_loc)
 	distance_before_accel = dist - distance_while_boosting	# Distance we want to be before we start accelerating
 
 	target_steady_speed = distance_before_accel / (time_left+0.0000001)		# Speed we want to maintain before we start accelerating for the arrival speed
@@ -96,7 +109,7 @@ def reachable(car, location, time_left):
 
 	speed = 1400 if car.boost < 30 else 2300	# Good enough for Botimus, good enough for me.
 	ground_loc = MyVec3(location.x, location.y, 50)
-	dist = distance(car.location, ground_loc).size
+	dist = distance(car.location, ground_loc)
 	minimum_speed_to_reach = dist / (time_left+0.0000001)
 	return minimum_speed_to_reach < speed
 
@@ -105,7 +118,7 @@ def find_soonest_reachable(car, prediction):
 	for ps in prediction.slices:
 		location = ps.physics.location
 		ground_loc = MyVec3(location.x, location.y, 120)
-		dist = distance(car.location, ground_loc).size
+		dist = distance(car.location, ground_loc)
 		dt = ps.game_seconds - car.game_seconds
 		is_reachable = reachable(car, ps.physics.location, dt)
 		if(is_reachable):
@@ -278,7 +291,7 @@ def distance(loc1, loc2) -> MyVec3:
 		loc1 = loc1.location
 	if(hasattr(loc2, "location")):
 		loc2 = loc2.location
-	return loc1-loc2
+	return (loc1-loc2).size
 
 def angle_to(source, target, direction = 1.0) -> float:
 	v1 = source.rotation.to_vector3() * direction  
@@ -310,7 +323,7 @@ def reachable_simple(self, location, time_left) -> bool:
 	if self.boost > 30 or self.supersonic:
 		speed = 2300
 	tloc = Vector3(location.x,location.y,0)
-	if distance(self.location, tloc) / time_left < speed:
+	if (distance(self.location, tloc) / time_left) < speed:
 		return True
 	return False
 

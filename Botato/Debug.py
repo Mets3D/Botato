@@ -179,7 +179,7 @@ def render_all(car):
 			text_2d(car, 10, 240, "Yaw to target: " + str(int(car.yaw_car_to_target)))
 			text_2d(car, 10, 270, "Distance from target: " + str(int(car.distance_from_target)))
 			
-			time_to_reach = -1 if car.speed==0 else distance(car.location, car.active_strategy.target).size/car.speed
+			time_to_reach = -1 if car.speed==0 else distance(car.location, car.active_strategy.target)/car.speed
 			text_2d(car, 10, 300, "ETA: " + str(time_to_reach))
 
 	# Render prediction (hue indicates dt, red=near future, blue=distant future)

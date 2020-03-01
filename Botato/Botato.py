@@ -83,6 +83,9 @@ class Botato(BaseAgent):
 
 		self.boost_pads = []
 		self.boost_locations = []
+
+		# Quick Chat!
+		self.last_quick_chat = 0
 	
 	def keyboard_input(self):
 		# Controls
@@ -144,6 +147,11 @@ class Botato(BaseAgent):
 			self.set_game_state(game_state)
 			print("Speeding to %f" %self.game_speed)
 
+	# def send_quick_chats(self, chat_mode, chat_code, number=1, timer=1):
+	# 	if self.last_quick_chat < self.packet.
+	# 	for i in range(0, number):
+	# 		self.send_quick_chat(chat_mode, chat_code)
+
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
 			# game_info_state = GameInfoState(game_speed=6)
 			# game_state = GameState(game_info=game_info_state)
@@ -160,8 +168,8 @@ class Botato(BaseAgent):
 			for i in range(0, 30):
 				prediction_slice = self.ball_prediction.slices[i]
 				loc = prediction_slice.physics.location
-				# if(abs(loc.y) > 5050):
-				# 	self.training = Training(self, "Random Ball Impulse")
+				if(abs(loc.y) > 5050):
+					self.training = Training(self, "Random Ball Impulse")
 
 			# Choosing Strategy
 			for s in Strategy.strategies:
@@ -173,7 +181,7 @@ class Botato(BaseAgent):
 
 			# Debug Render - only for index==0 car.
 			# if(self.index==0):
-			Debug.render_all(self)
+			# Debug.render_all(self)
 			self.renderer.end_rendering()
 
 			self.keyboard_input()

@@ -96,7 +96,7 @@ class M_Dodge(Maneuver):
 		velocity_at_car = (car.location + car.velocity/120)		# per tick, rather than per second. Feels like it shouldn't matter, but I guess it does. TODO still not really sure if this is the right way to do this, but it does what I wanted it to.
 		distance_now = distance(car.location, target)
 		distance_next = distance(velocity_at_car, target)
-		speed_toward_target = (distance_now.size - distance_next.size) * 120
+		speed_toward_target = (distance_now - distance_next) * 120
 		speed_toward_target_ratio = 0 if car.speed==0 else speed_toward_target / car.speed	# The amount of our speed which is in the target's direction.
 
 		dodge_steering_threshold = 0.51					# Don't try to dodge when the car is steering harder than this.

@@ -50,11 +50,10 @@ def preprocess(self, packet: GameTickPacket):
 	self.time_old = time.time()
 
 	# Car Math
-	self.distance_from_ball = (self.location - ball.location).length
 	self.boost = self.car.boost
 	self.supersonic = self.car.is_super_sonic
 	self.speed = self.velocity.size
-	self.throttle_accel = get_throttle_accel(self.speed)
+	self.throttle_accel = 0#get_throttle_accel(self.speed)
 	self.game_seconds = packet.game_info.seconds_elapsed
 
 	# Other Bots

@@ -258,6 +258,8 @@ class M_Powerslide(Maneuver):
 	last_slide_start = 0
 	slide_gap = 1						# Time that has to pass before reactivating. TODO does this work?	# TODO: Should this be neccessary? :/
 
+	# TODO: We shouldn't powerslide when going quite slowly, I think. Or only at extreme angles, if that.
+
 	@classmethod
 	def get_output(cls, car, target) -> SimpleControllerState:
 		yaw_car_to_target = get_yaw_to_target(car, target)

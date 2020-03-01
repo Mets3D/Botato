@@ -16,6 +16,23 @@ ACCEL_GRAV = 650
 
 arena = MyVec3(8200, 10280, 2050)
 
+def will_intersect(car):
+	"""If we went in a straight line towards the target at our current speed, would we hit the ball?"""
+	target = car.active_strategy.target
+	prediction = car.ball_prediction
+
+	car_loc = car.location
+
+	for i in range(0, 150):
+		ps = prediction.slices[i]
+		ball_loc = ps.physics.location
+		
+
+
+def between(x, val1, val2):
+	"""Find whether x is between val1 and val2."""
+	return max(val1, val2) > x > min(val1, val2)
+
 def find_nearest(objs, obj):
 	"""Find object in objs that is nearest to obj."""
 	"""They need to have a .location.x/y/z."""

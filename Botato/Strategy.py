@@ -35,29 +35,55 @@ class Strategy:
 	@classmethod
 	def evaluate(cls, car):
 		"""Return how good this strategy seems to be right now, 0-1. Tweaking these values can be quite tricky."""
-		viability = 0
+		cls.viability = 0
+		return cls.viability
 	
 	@classmethod
 	def find_target(cls, car):
-		"""Determine the path we want to take to control_car the Strategy. The end of the path would usually be the ball, a large boost pad, or our own goal. The rest of the path is usually small boost pads, or target locations that we want to reach in order to line up for a desired ball touch."""
-		# TODO: for now, strategy should be responsible for picking sub-targets like boost and goalpost avoidance, but in the future that could be moved outside of strategies, since it should be the same logic for any strategy.
-		cls.path = []
+		"""Determine our target location - In the future, maybe we'll have sub-targets that make up a path, for more advanced planning ahead."""
+		cls.target = MyVec3(0, 0, 0)
+		return cls.target
 
 	@classmethod
 	def control_car(cls, car):
 		""" Set the car's inputs using Maneuvers. """
+		cls.find_target(car)
 		return M_Speed_On_Ground.control(car, cls.target, 2300)
-		return None
 
 class Strat_Defense(Strategy):
 	name = "Defense"
+	@classmethod
+	def evaluate(cls, car):
+		value = 0
+
+		between_ball_and_own_goal = between(car.location.y, ball.location.y, car.own_goal.location.y)
+		value += (1 - between_ball_and_own_goal) * 0.3
+		
+		cls.viability = value
+
+	@classmethod
+	def find_target(cls, car):
+		# First target should just be our own goal.
+		cls.target = car.own_goal.location
+
+		# NEXT UP:
+		# If our path is intersecting the ball, avoid the ball (In the future, we might want to hit the ball towards our own corner, actually)
+		# How to make this work with a predicted ball?
+		# Finish implementing will_intersect() in Utils.
+		# If we will intersect, the target should be put next to the ball, in the opposite direction of where it's currently moving. If it's moving slower, the target should be further away from the ball.
+
 
 class Strat_HitBallTowardsTarget(Strategy):
 	name = "Hit Ball Towards Target"
 
 	@classmethod
 	def evaluate(cls, car):
-		cls.viability=0
+		value = 0
+
+		between_ball_and_own_goal = between(car.location.y, ball.location.y, car.own_goal.location.y)
+		value += (between_ball_and_own_goal) * 0.3
+		
+		cls.viability = value
 
 	@classmethod
 	def find_target(cls, car):
@@ -91,6 +117,7 @@ class Strat_HitBallTowardsTarget(Strategy):
 		# TODO avoid hitting ball into our own net, but probably don't do this inside this strategy. Instead, in those situations, this shouldn't be the active strategy to begin with.
 
 		return cls.target
+
 	@classmethod
 	def control_car(cls, car):
 		cls.find_target(car)
@@ -106,6 +133,9 @@ class Strat_TouchPredictedBall(Strategy):
 	@classmethod
 	def find_target(cls, car):
 		soonest_reachable = find_soonest_reachable(car, car.ball_prediction)
+		if not soonest_reachable:
+			# TODO: If there is no soon reachable ball, this should not be the active strategy!
+			return
 		predicted_ball = soonest_reachable[0]
 		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
 		dist = distance(car.location, predicted_ball.physics.location).size
@@ -185,6 +215,9 @@ class Strat_ArriveWithSpeed(Strategy):
 	@classmethod
 	def find_target(cls, car):
 		soonest_reachable = find_soonest_reachable(car, car.ball_prediction)
+		if not soonest_reachable:
+			# TODO: If there is no soon reachable ball, this should not be the active strategy!
+			return
 		predicted_ball = soonest_reachable[0]
 		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
 		dist = distance(car.location, predicted_ball.physics.location).size
@@ -257,7 +290,8 @@ class Strat_ArriveWithSpeed(Strategy):
 		return M_Speed_On_Ground.control(car, cls.target, 2300)
 
 strategies = [
+	Strat_Defense,
 	Strat_HitBallTowardsTarget,
-	Strat_TouchPredictedBall,
-	Strat_MoveToRandomPoint,
+	# Strat_TouchPredictedBall,
+	# Strat_MoveToRandomPoint,
 ]

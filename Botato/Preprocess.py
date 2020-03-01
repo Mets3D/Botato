@@ -19,6 +19,9 @@ def preprocess(self, packet: GameTickPacket):
 	ball.av = MyVec3(packet.game_ball.physics.angular_velocity)
 	ball.rotation = ball.velocity.to_rotation()
 
+	# Ball prediction
+	self.ball_prediction = self.get_ball_prediction_struct()
+
 	# Goals
 	if(self.team==0):
 		self.enemy_goal = orange_goal

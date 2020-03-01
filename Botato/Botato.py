@@ -155,7 +155,6 @@ class Botato(BaseAgent):
 			Preprocess.preprocess(self, packet)		# Cleaning up values
 
 			self.renderer.begin_rendering()
-			self.ball_prediction = self.get_ball_prediction_struct()
 			
 			# Make sure ball doesn't get scored :P
 			for i in range(0, 30):

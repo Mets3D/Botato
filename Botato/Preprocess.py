@@ -7,11 +7,11 @@ from Utils import *
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket, Vector3
 
-import time
-
 def preprocess(self, packet: GameTickPacket):
 	self.packet = packet
 	self.controller = SimpleControllerState()
+
+	self.game_seconds = packet.game_info.seconds_elapsed
 
 	# Ball
 	ball.location = MyVec3(packet.game_ball.physics.location)
@@ -41,20 +41,19 @@ def preprocess(self, packet: GameTickPacket):
 	self.wheel_contact = self.car.has_wheel_contact
 	if(self.wheel_contact != self.wheel_contact_old):
 		self.wheel_contact_old = self.wheel_contact
-		self.last_wheel_contact = time.time()
+		self.last_wheel_contact = self.game_seconds
 	
 	if(self.last_self):
 		self.acceleration = self.velocity - self.last_self.velocity
 
-	self.dt = time.time() - self.time_old
-	self.time_old = time.time()
+	self.dt = self.game_seconds - self.time_old
+	self.time_old = self.game_seconds
 
 	# Car Math
 	self.boost = self.car.boost
 	self.supersonic = self.car.is_super_sonic
 	self.speed = self.velocity.size
 	self.throttle_accel = 0#get_throttle_accel(self.speed)
-	self.game_seconds = packet.game_info.seconds_elapsed
 
 	# Other Bots
 	self.opponents = list()

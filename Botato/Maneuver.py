@@ -4,7 +4,6 @@ from Unreal import Rotator, MyVec3
 from Objects import *
 from Utils import *
 from Training import *
-import time	# TODO: Instead of using time.time(), we should be getting the game time from the gametickpacket, to make sure everything works under different framerates/game speeds.
 
 def get_yaw_to_target(car, target):
 	# This gives better results than local coords yaw difference, particularly when on the wall.
@@ -54,9 +53,9 @@ class M_Speed_On_Ground(Maneuver):
 				#and abs(yaw_car_to_target) < 90 
 				#and abs(car.speed / speed_toward_target) > 1.1
 				and car.controller.steer==1
-				and time.time() - car.powersliding_since > drifting_timer):
+				and car.game_seconds - car.powersliding_since > drifting_timer):
 				car.controller.steer = -car.controller.steer
-				#print("drifting "+str(time.time()))
+				#print("drifting "+str(car.game_seconds))
 
 		# Dodging
 		M_Dodge.control(car, car.active_strategy.target, desired_speed)
@@ -112,19 +111,19 @@ class M_Dodge(Maneuver):
 		
 		if(cls.jumped):
 			# Step 2 - Tilt & wait for dodge delay.
-			if( (time.time() - cls.last_jump) <= dodge_delay):	# It's not time to dodge yet.
+			if( (car.game_seconds - cls.last_jump) <= dodge_delay):	# It's not time to dodge yet.
 				controller.pitch = -1
 				#controller.roll = local_target_unit_vec.y	# Try to dodge roughly towards target. TODO: This is not the best.
 					
 				controller.jump = True	# "Hold" the jump key
 			
 			# Step 2.5 - Release the jump key just before the dodge.
-			if( dodge_delay >= time.time() - cls.last_jump >= dodge_delay-0.1		# We're 0.03s away from the time when we should dodge. (TODO: I hope this doesn't break at low framerate :S)
+			if( dodge_delay >= car.game_seconds - cls.last_jump >= dodge_delay-0.1		# We're 0.03s away from the time when we should dodge. (TODO: I hope this doesn't break at low framerate :S)
 				and not cls.dodged):
 				controller.jump = False
 			
 			# Step 3 - Dodge, continue air steering in the target direction until we land. This runs ONCE!
-			elif(time.time() - cls.last_jump >= dodge_delay		# It's time to dodge.
+			elif(car.game_seconds - cls.last_jump >= dodge_delay		# It's time to dodge.
 				and not cls.dodged):								# We haven't dodge yet.
 					controller.pitch = -1
 					controller.roll = local_target_unit_vec.y	# Try to dodge roughly towards target. TODO: This is not the best.
@@ -140,7 +139,7 @@ class M_Dodge(Maneuver):
 				
 			elif(cls.dodged and car.wheel_contact):
 				#print("dodge duration from jump to landing:")
-				#print(time.time()-cls.last_jump)
+				#print(car.game_seconds - cls.last_jump)
 				#print("dodge distance")
 				#print((car.location - car.last_jump_loc).size)
 				cls.jumped=False
@@ -159,7 +158,7 @@ class M_Dodge(Maneuver):
 				distance_from_target > 1500										,# We are far enough away from the target TODO: dodge_distance + overshoot_threshold
 				car.location.z < 18												,# We are on the floor
 				car.wheel_contact												,# We are touching the floor (slightly redundant, yes)
-				time.time() - car.last_wheel_contact > cls.wheel_contact_delay	,# We haven't just landed (Trying to jump directly after landing will result in disaster, except after Wavedashing).
+				car.game_seconds - car.last_wheel_contact > cls.wheel_contact_delay	,# We haven't just landed (Trying to jump directly after landing will result in disaster, except after Wavedashing).
 				abs(controller.steer) < dodge_steering_threshold				,# We aren't steering very hard
 				car.controller.handbrake == False								,# We aren't powersliding
 		])): 
@@ -171,7 +170,7 @@ class M_Dodge(Maneuver):
 			controller.jump = True
 			controller.pitch = -1
 			cls.jumped = True
-			cls.last_jump = time.time()
+			cls.last_jump = car.game_seconds
 		
 		return cls.controller
 		
@@ -275,7 +274,7 @@ class M_Powerslide(Maneuver):
 
 		# Step 1 - Begin powersliding
 		if(		not cls.active
-				and time.time() - cls.last_slide_start > cls.slide_gap):
+				and car.game_seconds - cls.last_slide_start > cls.slide_gap):
 			# Calculate requirements to begin and end the powerslide.
 			# TODO: The begin threshold will need to go even lower, the faster we are going. This might still be prone to orbiting.
 			cls.threshold_begin_slide_angle = 40
@@ -288,7 +287,7 @@ class M_Powerslide(Maneuver):
 						car.speed > 500,
 				]):
 				cls.active=True
-				cls.last_slide_start = time.time()
+				cls.last_slide_start = car.game_seconds
 				#print("Starting powerslide...")
 				#print("current angle: " + str(abs(yaw_car_to_target)))
 				#print("end angle: " + str(cls.threshold_end_slide_angle))

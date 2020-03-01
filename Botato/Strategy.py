@@ -181,7 +181,7 @@ class Strat_MoveToRandomPoint(Strategy):
 			cls.desired_speed = 2300
 			dist = distance(car.location, random_point)
 			car.ETA = distance_to_time(ACCEL_BOOST, dist, car.speed)
-			car.start_time = time.time()
+			car.start_time = car.game_seconds
 
 			cls.target = random_point
 

@@ -24,7 +24,7 @@
 	"""This is bad because after the timer is up it will keep re-activating itself, so in the end the powersliding, vel_fac, yaw_fac values are completely useless and all that matters is what's in the if() requirements."""
 	if(self.powersliding):
 		controller.handbrake = True
-		if(time.time() > self.powerslide_until):
+		if(self.game_seconds > self.powerslide_until):
 			self.powersliding=False
 	elif(not self.powersliding and 
 			yaw_car_to_target * RAD_TO_DEG > 35 and
@@ -32,7 +32,7 @@
 		self.powersliding=True
 		self.drift_vel_fac = (self.velocity.length/2000/16)
 		self.drift_yaw_fac = (yaw_car_to_target * RAD_TO_DEG /65 /16)
-		self.powerslide_until = time.time() + self.drift_vel_fac + self.drift_yaw_fac	# Powerslide for some time depending on velocity and angle.
+		self.powerslide_until = self.game_seconds + self.drift_vel_fac + self.drift_yaw_fac	# Powerslide for some time depending on velocity and angle.
 		controller.handbrake = True
 
 """from Botimus or PythonExampleBot, I don't think I need it."""
@@ -133,8 +133,8 @@
 			time_gap = 0.5				# Time that has to pass before this maneuver can be re-activated.
 			if(
 				Powerslide1.yaw_threshold > abs(car.yaw_car_to_target) > yaw_threshold
-				and (time.time() < cls.powerslide_until
-				or time.time() > cls.powerslide_until + time_gap)
+				and (car.game_seconds < cls.powerslide_until
+				or car.game_seconds > cls.powerslide_until + time_gap)
 				and car.location.z < 50								# We aren't on a wall.
 				and car.wheel_contact								# We are touching the ground.
 			):
@@ -142,7 +142,7 @@
 				if( not car.powersliding ):	# If We just started powersliding
 					# Activate this maneuver
 					print("started small powerslide")
-					cls.powerslide_until = time.time() + slide_duration
+					cls.powerslide_until = car.game_seconds + slide_duration
 			elif(car.powersliding):
 				# Deactivate this maneuver
 				#print("ended small powerslide")

@@ -31,7 +31,7 @@ def find_nearest(objs, obj):
 	return nearest
 
 def get_yaw_relative(from_x, from_y, to_x, to_y, yaw):
-	"""Return yaw difference between two locations in rad"""
+	"""Return yaw difference between two locations in deg"""
 	angle = math.degrees(math.atan2(to_y - from_y, to_x - from_x))
 	yaw_relative = angle - math.degrees(yaw)
 	# Correct the values

@@ -23,6 +23,7 @@ from RLUtilities.Simulation import Ball, Pitch, ray
 
 class Strategy:
 	""" Base Class for Strategies. """
+	# TODO: Should Strategies be able to use other strategies? I'm not sure!
 	
 	# Class Variables
 	name = "StrategyName"
@@ -53,7 +54,7 @@ class Strat_HitBallTowardsTarget(Strategy):
 
 	@classmethod
 	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
-		cls.viability=1.2
+		cls.viability=0
 
 	@classmethod
 	def find_target(cls, car):
@@ -97,7 +98,7 @@ class Strat_TouchPredictedBall(Strategy):
 	
 	@classmethod
 	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
-		cls.viability=1.2
+		cls.viability=0
 	
 	@classmethod
 	def find_target(cls, car):

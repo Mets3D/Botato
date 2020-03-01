@@ -42,7 +42,7 @@ class Botato(BaseAgent):
 		self.saved_state = None			# For saving and loading states.
 		self.game_speed = 1.0
 
-		self.active_strategy = Strategy.Strat_MoveToRandomPoint
+		self.active_strategy = Strategy.strategies[0]
 
 		self.time_old = 1
 		self.dt = 1
@@ -55,13 +55,6 @@ class Botato(BaseAgent):
 		# Throttle
 		self.acceleration = MyVec3(0,0,0)
 		self.throttle_accel = 0
-
-		# Dodging
-		self.jumped = False
-		self.dodged = False
-		self.last_jump = 1				# Time of our last jump (Time of our last dodge is not stored currently)
-		#temp
-		self.last_jump_loc = MyVec3(0,0,0)
 		
 		# Powersliding
 		self.powersliding = False
@@ -152,9 +145,9 @@ class Botato(BaseAgent):
 			print("Speeding to %f" %self.game_speed)
 
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
-			game_info_state = GameInfoState(game_speed=6)
-			game_state = GameState(game_info=game_info_state)
-			self.set_game_state(game_state)
+			# game_info_state = GameInfoState(game_speed=6)
+			# game_state = GameState(game_info=game_info_state)
+			# self.set_game_state(game_state)
 
 			if not packet.game_info.is_round_active:
 				return self.controller	# Don't calculate anything during replays.

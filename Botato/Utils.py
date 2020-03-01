@@ -200,8 +200,11 @@ def multilerp(x, y, x_value):
 	""" Piecewise linear interpolate value, where x and y are lists of equal length defining points of the curve. """
 	# Thanks Dom for helping me improve my bad code https://discordapp.com/channels/348658686962696195/535605770436345857/574778990821113876
 	assert type(x)==list and type(y)==list, "x and y must be lists."
-	assert len(x) == len(y), "x and y need to be equal length."
-	assert x[0] <= x_value <= x[-1], "Value is out of range. Exrapolation currently not supported.\n" + str(x) + " \n" + str(y) + " \n" + str(x_value)
+	assert len(x) == len(y), "x and y must be equal length."
+	
+	# assert x[0] <= x_value <= x[-1], "Value is out of range. Exrapolation currently not supported.\n" + str(x) + " \n" + str(y) + " \n" + str(x_value)
+	# Extrapolation not supported, just clamp the value.
+	x_value = clamp(x_value, x[0], x[-1])
 
 	for i, e in enumerate(x):
 		if(x[i] <= x_value <= x[i+1]):

@@ -132,13 +132,13 @@ class Botato(BaseAgent):
 
 		# Change Game Speed
 		if(Keyboard.is_key_down("-")):
-			self.game_speed = max(self.game_speed-0.1, 0.05)
+			self.game_speed = max(self.game_speed-0.05, 0.05)
 			game_info_state = GameInfoState(game_speed=self.game_speed)
 			game_state = GameState(game_info=game_info_state)
 			self.set_game_state(game_state)
 			print("Slowing to %f" %self.game_speed)
 		if(Keyboard.is_key_down("+")):
-			self.game_speed += 0.1
+			self.game_speed += 0.05
 			game_info_state = GameInfoState(game_speed=self.game_speed)
 			game_state = GameState(game_info=game_info_state)
 			self.set_game_state(game_state)
@@ -166,7 +166,7 @@ class Botato(BaseAgent):
 
 			# Choosing Strategy
 			for s in Strategy.strategies:
-				s.evaluate(self, self.teammates, self.opponents, ball, self.boost_pads, self.active_strategy)
+				s.evaluate(self)
 				if(s.viability > self.active_strategy.viability):
 					self.active_strategy = s
 			

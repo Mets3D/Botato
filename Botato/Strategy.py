@@ -31,14 +31,14 @@ class Strategy:
 	target = MyVec3(0, 0, 0)
 	desired_speed = 2300
 
-	# TODO: both of the below methods should only take car as their parameter, but rename it to "agent". It should include everything else, even the ball.
+	# TODO: both of the below methods should only take car as their parameter, but rename it to "car". It should include everything else, even the ball.
 	@classmethod
-	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
+	def evaluate(cls, car):
 		"""Return how good this strategy seems to be right now, 0-1. Tweaking these values can be quite tricky."""
 		viability = 0
 	
 	@classmethod
-	def find_target(cls, car, teammates, opponents, ball, boost_pads, active_strategy, controller, renderer):
+	def find_target(cls, car):
 		"""Determine the path we want to take to control_car the Strategy. The end of the path would usually be the ball, a large boost pad, or our own goal. The rest of the path is usually small boost pads, or target locations that we want to reach in order to line up for a desired ball touch."""
 		# TODO: for now, strategy should be responsible for picking sub-targets like boost and goalpost avoidance, but in the future that could be moved outside of strategies, since it should be the same logic for any strategy.
 		cls.path = []
@@ -49,11 +49,14 @@ class Strategy:
 		return M_Speed_On_Ground.control(car, cls.target, 2300)
 		return None
 
+class Strat_Defense(Strategy):
+	name = "Defense"
+
 class Strat_HitBallTowardsTarget(Strategy):
 	name = "Hit Ball Towards Target"
 
 	@classmethod
-	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
+	def evaluate(cls, car):
 		cls.viability=0
 
 	@classmethod
@@ -97,7 +100,7 @@ class Strat_TouchPredictedBall(Strategy):
 	name = "Touch Predicted Ball"
 	
 	@classmethod
-	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
+	def evaluate(cls, car):
 		cls.viability=0
 	
 	@classmethod
@@ -127,7 +130,7 @@ class Strat_MoveToRandomPoint(Strategy):
 	bias_bump = 0.6
 	
 	@classmethod
-	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
+	def evaluate(cls, car):
 		cls.viability=1.1
 	
 	@classmethod
@@ -165,7 +168,7 @@ class Strat_ArriveWithSpeed(Strategy):
 	name = "Arrive With Speed"
 	
 	@classmethod
-	def evaluate(cls, car, teammates, opponents, ball, boost_pads, active_strategy):
+	def evaluate(cls, car):
 		cls.viability=0.99
 	
 

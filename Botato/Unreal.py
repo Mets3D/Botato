@@ -29,7 +29,7 @@ class MyVec3(vec3):
 			self[1] = y
 			self[2] = z
 		else:
-			raise Exception("Invalid vector constructor input")
+			raise Exception("Invalid vector constructor input type: %s" %type(x))
 
 	@property
 	def x(self):

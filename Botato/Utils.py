@@ -17,24 +17,17 @@ ACCEL_GRAV = 650
 arena = MyVec3(8200, 10280, 2050)
 
 def will_intersect(car):
-	"""If we went in a straight line towards the target at our current speed, would we hit the ball?"""
-	target = car.active_strategy.target
-	prediction = car.ball_prediction
-
+	"""If we went in a straight line forwards at our current speed, would we hit the ball?"""
 	car_loc = car.location
 	prev_car_loc = MyVec3(car_loc)
 	dt = 1/60
 	collision_threshold = 175
 
-
-
 	# Draw a line in the direction we're moving
 	car.renderer.draw_line_3d(car_loc, car_loc+car.velocity, car.renderer.green())
 
-	for i in range(0, 150):
-		ps = prediction.slices[i]
+	for ps in car.ball_prediction.slices:
 		ball_loc = MyVec3(ps.physics.location)
-		car_towards_ball = (ball_loc - car_loc).normalize()
 		car_loc += car.velocity * dt
 		if distance(car_loc, ball_loc) < collision_threshold:
 			car.renderer.draw_line_3d(prev_car_loc, car_loc, car.renderer.red())
@@ -159,23 +152,6 @@ def raycast(loc1, loc2, debug=True) -> MyVec3:
 
 	return MyVec3(my_raycast.start)
 
-def quadratic(a, b, c, positive_only=False) -> list():
-	""" ax^2 + bx + c = 0 """
-	""" x = (-b +/- sqrt(b^2-4ac))/2a """
-	discriminant = math.pow(b, 2) - 4 * a * c
-	if(discriminant < 0):	# TODO idk how complex numbers work but I do know that it's a one way street, so we're forcing the discriminant to be positive and we'll see what happens.
-		discriminant = -discriminant
-	plus = (-b + math.sqrt(discriminant))/2
-	minus = (-b - math.sqrt(discriminant))/2
-	if(positive_only):
-		ret = []
-		if(plus > 0):
-			ret.append(plus)
-		elif(minus > 0):
-			ret.append(minus)
-		return ret
-	return [plus, minus]
-
 def accel_distance(initial_speed, target_speed, boost, speed_error=1) -> list:
 	""" Measure how much time and distance it will require to go from initial_speed to target_speed, while moving in a straight line, with a given boost. """
 	timer = 0
@@ -214,6 +190,22 @@ def accel_distance(initial_speed, target_speed, boost, speed_error=1) -> list:
 		timer += time_tick
 	return [cum_distance, timer]
 
+def quadratic(a, b, c, positive_only=False) -> list():
+	""" ax^2 + bx + c = 0 """
+	""" x = (-b +/- sqrt(b^2-4ac))/2a """
+	discriminant = math.pow(b, 2) - 4 * a * c
+	if(discriminant < 0):	# TODO idk how complex numbers work but I do know that it's a one way street, so we're forcing the discriminant to be positive and we'll see what happens.
+		discriminant = -discriminant
+	plus = (-b + math.sqrt(discriminant))/2
+	minus = (-b - math.sqrt(discriminant))/2
+	if(positive_only):
+		ret = []
+		if(plus > 0):
+			ret.append(plus)
+		elif(minus > 0):
+			ret.append(minus)
+		return ret
+	return [plus, minus]
 
 def lerp(from_val, to_val, factor, clamp=False):
 	""" Linear interpolate between from_val to to_val by factor. """
@@ -250,11 +242,6 @@ def get_throttle_accel(vel):
 	accelerations = [1600, 160,  0,    0   ]
 	return multilerp(velocities, accelerations, vel)
 
-def time_to_reach_velocity(vel):
-	""" Get how much time it will take to reach a given velocity with purely throttling - No steering or boosting. """
-	return 0
-
-
 def local_coords(origin_object, target_location) -> MyVec3:
 	""" Returns the target location as local coordinates of origin_object."""
 	# Originally by GooseFairy https://github.com/ddthj/Gosling/blob/master/Episode%203%20Code/Util.py
@@ -283,9 +270,6 @@ def loc(obj) -> Vector3:
 		return Vector3(obj[0], obj[1], obj[2])
 	return obj.location
 
-def z0(loc):
-	return Vector3(loc.x,loc.y,0)
-
 def distance(loc1, loc2) -> MyVec3:
 	if(hasattr(loc1, "location")):
 		loc1 = loc1.location
@@ -311,10 +295,6 @@ def angle_to(source, target, direction = 1.0) -> float:
 def direction(source, target) -> Vector3:
 	return (loc(target) - loc(source)).normalize()
 
-def inside_arena(location) -> bool:
-	location = loc(location)
-	return abs(location.x) < arena.x and abs(location.y) < arena.y
-
 def reachable_simple(self, location, time_left) -> bool:
 	if time_left==0:
 		return False
@@ -329,67 +309,3 @@ def reachable_simple(self, location, time_left) -> bool:
 
 def is_in_goal_cone(player, obj, target_goal):
 	angle_to(player, target_goal.left_post) < angle_to(player, obj) < angle_to(player, target_goal.right_post)
-
-def intersect_two_circles(x1,y1,r1, x2,y2,r2):
-	centerdx = x1 - x2
-	centerdy = y1 - y2
-	R = math.sqrt(centerdx * centerdx + centerdy * centerdy)   
-	R2 = R*R
-	R4 = R2*R2
-	a = (r1*r1 - r2*r2) / (2 * R2)
-	r2r2 = (r1*r1 - r2*r2)
-	C = 2 * (r1*r1 + r2*r2) / R2 - (r2r2 * r2r2) / R4 - 1
-	if C < 0:
-		return
-	c = math.sqrt(C)   
-	fx = (x1+x2) / 2 + a * (x2 - x1)
-	gx = c * (y2 - y1) / 2
-	ix1 = fx + gx
-	ix2 = fx - gx  
-	fy = (y1+y2) / 2 + a * (y2 - y1)
-	gy = c * (x1 - x2) / 2
-	iy1 = fy + gy
-	iy2 = fy - gy
-
-	return [[ix1, iy1], [ix2, iy2]]
-
-def boost_needed(initial_speed, goal_speed):
-	p1 = 6.31e-06
-	p2 = 0.010383
-	p3 = 1.3183
-	boost_initial = p1*initial_speed**2 + p2*initial_speed + p3
-	boost_goal = p1*goal_speed**2 + p2*goal_speed + p3
-	boost_needed = boost_goal - boost_initial
-	return boost_needed
-
-def rotate2D(vector, angle):
-	v = Vector3(vector.x,vector.y,0)
-	theta = math.radians(angle)
-
-	cs = math.cos(theta)
-	sn = math.sin(theta)
-
-	v.x = vector.x * cs - vector.y * sn
-	v.y = vector.x * sn + vector.y * cs
-
-	return v
-
-def directional_angle(start, center, end, clockwise = False):
-	a0 = (start - center).angle
-	a1 = (end - center).angle
-	if clockwise:
-		return a0 - a1
-	else:
-		return a1 - a0
-
-def get_steer_towards(s, target, dd = 1):
-	return clamp(dd * angle_to(s, target, dd) / 15, -1, 1)
-
-def optimal_speed(dist, time_left, current_speed):
-	desired_speed = dist / max(0.01, time_left)
-	alpha = 1.3
-	return  alpha * desired_speed - (alpha - 1) * current_speed
-
-def turn_radius(speed):
-	spd = clamp(speed,0,2300)
-	return 156 + 0.1*spd + 0.000069*spd**2 + 0.000000164*spd**3 + -5.62E-11*spd**4

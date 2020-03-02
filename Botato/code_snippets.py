@@ -1,5 +1,78 @@
 """This file is for code snippets that I'm unlikely to use in the future, but I'd rather not perma-delete them."""
 
+""" Old utility functions """
+def intersect_two_circles(x1,y1,r1, x2,y2,r2):
+	centerdx = x1 - x2
+	centerdy = y1 - y2
+	R = math.sqrt(centerdx * centerdx + centerdy * centerdy)   
+	R2 = R*R
+	R4 = R2*R2
+	a = (r1*r1 - r2*r2) / (2 * R2)
+	r2r2 = (r1*r1 - r2*r2)
+	C = 2 * (r1*r1 + r2*r2) / R2 - (r2r2 * r2r2) / R4 - 1
+	if C < 0:
+		return
+	c = math.sqrt(C)   
+	fx = (x1+x2) / 2 + a * (x2 - x1)
+	gx = c * (y2 - y1) / 2
+	ix1 = fx + gx
+	ix2 = fx - gx  
+	fy = (y1+y2) / 2 + a * (y2 - y1)
+	gy = c * (x1 - x2) / 2
+	iy1 = fy + gy
+	iy2 = fy - gy
+
+	return [[ix1, iy1], [ix2, iy2]]
+
+def z0(loc):
+	return Vector3(loc.x,loc.y,0)
+
+def inside_arena(location) -> bool:
+	location = loc(location)
+	return abs(location.x) < arena.x and abs(location.y) < arena.y
+
+def boost_needed(initial_speed, goal_speed):
+	p1 = 6.31e-06
+	p2 = 0.010383
+	p3 = 1.3183
+	boost_initial = p1*initial_speed**2 + p2*initial_speed + p3
+	boost_goal = p1*goal_speed**2 + p2*goal_speed + p3
+	boost_needed = boost_goal - boost_initial
+	return boost_needed
+
+def rotate2D(vector, angle):
+	v = Vector3(vector.x,vector.y,0)
+	theta = math.radians(angle)
+
+	cs = math.cos(theta)
+	sn = math.sin(theta)
+
+	v.x = vector.x * cs - vector.y * sn
+	v.y = vector.x * sn + vector.y * cs
+
+	return v
+
+def directional_angle(start, center, end, clockwise = False):
+	a0 = (start - center).angle
+	a1 = (end - center).angle
+	if clockwise:
+		return a0 - a1
+	else:
+		return a1 - a0
+
+def get_steer_towards(s, target, dd = 1):
+	return clamp(dd * angle_to(s, target, dd) / 15, -1, 1)
+
+def optimal_speed(dist, time_left, current_speed):
+	desired_speed = dist / max(0.01, time_left)
+	alpha = 1.3
+	return  alpha * desired_speed - (alpha - 1) * current_speed
+
+def turn_radius(speed):
+	spd = clamp(speed,0,2300)
+	return 156 + 0.1*spd + 0.000069*spd**2 + 0.000000164*spd**3 + -5.62E-11*spd**4
+
+
 """RLUtils ball prediction & rendering."""
 	self.game.read_game_information(packet, self.get_rigid_body_tick(), self.get_field_info())
 	b = Ball(self.game.ball)

@@ -97,6 +97,8 @@ class Strat_HitBallTowardsTarget(Strategy):
 
 		# Ideally, this Strategy will only become the most viable one when grabbing the target from this other strategy will be good enough. (No turning around or such involved)
 		ball = Strat_TouchPredictedBall.find_target(car)
+		if not ball:
+			return	# If there's no hittable ball, any strategy that relies on hitting a ball should evaluate to a hard 0, so that this doesn't happen.
 
 		car_ball_dist = distance(car, ball)
 		goal_ball_dist = distance(car.enemy_goal, ball)

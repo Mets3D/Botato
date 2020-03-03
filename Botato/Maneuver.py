@@ -14,30 +14,38 @@ def get_yaw_to_target(car, target):
 class Maneuver():
 	"""Base class for maneuvers. Maneuvers are used by Strategies to control the car. Maneuvers can use other Maneuvers."""
 	controller = SimpleControllerState()
+	controls = ["throttle", "steer", "pitch", "yaw", "roll", "jump", "boost", "handbrake", "use_item"]
 
 	@classmethod
 	def get_output(cls, car) -> SimpleControllerState:
-		"""Calculate the desired controls for this maneuver, and return them."""
+		"""Calculate the desired controls for this maneuver, save them into the class's controller, and return them."""
+		"""Note: If a control is only changed by this maneuver conditionally, it should be initialized as the original value from the car's controller."""		
 		return cls.controller
 	
 	@classmethod
 	def control(cls, car):
-		""" Calculate the desired controls for this maneuver, and apply them to the car."""
-		car.controller = cls.get_output(car)
+		""" Apply the class's controller to the passed car, selectively if neccessary. """
+		# I guess for now we also update the class's controller from here, but I'm not sure if this is correct yet.
+		cls.get_output(car)
+		for c in cls.controls:
+			setattr(car.controller, c, getattr(cls.controller, c))
 
 class M_Speed_On_Ground(Maneuver):
 	"""Maneuver for moving on the floor as fast as possible towards a target. Not necessarily ideal for hitting the ball!"""
 	# TODO: Wavedashing & Half-Flipping? Need to figure out how I want to structure the concept of "Maneuvers".
+	controls = ["throttle", "steer", "pitch", "yaw", "roll", "jump", "boost", "handbrake"]
 
 	@classmethod
 	def get_output(cls, car, target, desired_speed=2300) -> SimpleControllerState:
+		""" This one is a maneuver built up of other maneuvers, so get_output will mostly consist of copying those other maneuver's controls over to this one."""
+
 		controller = cls.controller
 		
 		# Powersliding
-		M_Powerslide.control(car, car.active_strategy.target)
+		controller.handbrake = M_Powerslide.get_output(car, car.active_strategy.target).handbrake
 
 		# Throttle
-		M_Throttle.control(car, car.active_strategy.target, desired_speed)
+		controller.throttle = M_Throttle.get_output(car, car.active_strategy.target, desired_speed).throttle
 		
 		# Steering
 		turn_power = 20	# Increasing makes it align faster but be more wobbly, decreasing makes it less wobbly but align slower.
@@ -60,17 +68,24 @@ class M_Speed_On_Ground(Maneuver):
 				#print("drifting "+str(car.game_seconds))
 
 		# Dodging
-		M_Dodge.control(car, car.active_strategy.target, desired_speed)
+		dodge = M_Dodge.get_output(car, car.active_strategy.target, desired_speed)
+		controller.jump = dodge.jump
+		controller.pitch = dodge.pitch
+		controller.yaw = dodge.yaw
+		controller.roll = dodge.roll
 
 		# Boosting
-		M_Boost.control(car, car.active_strategy.target, desired_speed)
+		controller.boost = M_Boost.get_output(car, car.active_strategy.target, desired_speed).boost
 
 		return cls.controller
- 
+		
 	@classmethod
 	def control(cls, car, target, desired_speed=2300):
-		""" Calculate the desired controls for this maneuver, and apply them to the car."""
-		car.controller = cls.get_output(car, target, desired_speed)
+		""" Apply the class's controller to the passed car, selectively if neccessary. """
+		# I guess for now we also update the class's controller from here, but I'm not sure if this is correct yet.
+		cls.get_output(car, target, desired_speed)
+		for c in cls.controls:
+			setattr(car.controller, c, getattr(cls.controller, c))
 
 class M_Dodge(Maneuver):
 	"""Dodge towards a target."""
@@ -79,6 +94,7 @@ class M_Dodge(Maneuver):
 	dodged = False
 	last_jump = 1				# Time of our last jump (Time of our last dodge is not stored currently)
 	last_jump_loc = MyVec3(0, 0, 0)
+	controls = ["pitch", "yaw", "roll", "jump"]
 
 	@classmethod
 	def get_output(cls, car, target, desired_speed=2300) -> SimpleControllerState:
@@ -152,17 +168,17 @@ class M_Dodge(Maneuver):
 		
 		# Step 1 - Jump
 		elif(all([
-				car.speed > dodge_speed_threshold								,# We are going fast enough (Dodging while slow is not worth it)
-				abs(car.av.z) < 1500											,# We aren't spinning like crazy
-				car.speed+500 < desired_speed									,# TODO: At high enough distances, it could be worth it to dodge and over-accelerate, then decelerate to correct for it.
-				speed_toward_target_ratio > speed_toward_target_ratio_threshold	,# We are moving towards the target with most of our speed. TODO: this should be covered by angular velocity checks instead, I feel like.
-				yaw_car_to_target < 40											,# We are more or less facing the target.
-				distance_from_target > 1500										,# We are far enough away from the target TODO: dodge_distance + overshoot_threshold
-				car.location.z < 18												,# We are on the floor
-				car.wheel_contact												,# We are touching the floor (slightly redundant, yes)
+				car.speed > dodge_speed_threshold									,# We are going fast enough (Dodging while slow is not worth it)
+				abs(car.av.z) < 1500												,# We aren't spinning like crazy
+				car.speed+500 < desired_speed										,# TODO: At high enough distances, it could be worth it to dodge and over-accelerate, then decelerate to correct for it.
+				speed_toward_target_ratio > speed_toward_target_ratio_threshold		,# We are moving towards the target with most of our speed. TODO: this should be covered by angular velocity checks instead, I feel like.
+				yaw_car_to_target < 40												,# We are more or less facing the target.
+				distance_from_target > 1500											,# We are far enough away from the target TODO: dodge_distance + overshoot_threshold
+				car.location.z < 18													,# We are on the floor
+				car.wheel_contact													,# We are touching the floor (slightly redundant, yes)
 				car.game_seconds - car.last_wheel_contact > cls.wheel_contact_delay	,# We haven't just landed (Trying to jump directly after landing will result in disaster, except after Wavedashing).
-				abs(controller.steer) < dodge_steering_threshold				,# We aren't steering very hard
-				car.controller.handbrake == False								,# We aren't powersliding
+				abs(controller.steer) < dodge_steering_threshold					,# We aren't steering very hard
+				car.controller.handbrake == False									,# We aren't powersliding
 		])): 
 			#print("speed: " + str(car.speed))
 			#print("ratio: " + str(speed_toward_target_ratio))
@@ -175,16 +191,10 @@ class M_Dodge(Maneuver):
 			cls.last_jump = car.game_seconds
 		
 		return cls.controller
-		
-	@classmethod
-	def control(cls, car, target, desired_speed=2300):
-		cls.get_output(car, target, desired_speed)
-		car.controller.jump = cls.controller.jump
-		car.controller.pitch = cls.controller.pitch
-		car.controller.yaw = cls.controller.yaw
-		car.controller.roll = cls.controller.roll
 
 class M_Boost(Maneuver):
+	controls = ["boost"]
+
 	@classmethod
 	def get_output(cls, car, target, desired_speed=2300) -> SimpleControllerState:
 		# Boosting
@@ -201,7 +211,7 @@ class M_Boost(Maneuver):
 			car.controller.handbrake == False,					# We are not powersliding (TODO: We might actually want to boost in the beginning (and/or end) of powersliding.)
 			abs(yaw_car_to_target) < yaw_limit,					# We are reasonably aligned with our target
 			#car.location.z < z_limit, 							# We are not on a wall or goalpost (for now) (delete this when facing towards target is implemented, then just add a roll check ro make sure we aren't upside down or something...)
-			(0 > car.rotation.pitch * RAD_TO_DEG > -50),			# We are not facing the sky or ground (possibly redundant)
+			(0 > car.rotation.pitch * RAD_TO_DEG > -50),		# We are not facing the sky or ground (possibly redundant)
 			#abs(car.rotation.roll) * RAD_TO_DEG < 90, 			# We are not sideways/on a wall (possibly redundant/wrong to have this, idk.)
 			car.speed < max_speed, 								# We are not going full speed
 			car.speed + base_accel+boost_accel < desired_speed,	# We aren't going fast enough. (TODO: We should only use boost if we can't reach desired speed within the required distance via just throttle. Although, reaching the desired speed faster makes our predictions more precise, sooner.
@@ -209,14 +219,12 @@ class M_Boost(Maneuver):
 			cls.controller.boost = True
 		else:
 			cls.controller.boost = False
-
-	@classmethod
-	def control(cls, car, target, desired_speed=2300):
-		cls.get_output(car, target, desired_speed)
-		car.controller.boost = cls.controller.boost
+		
+		return cls.controller
 
 class M_Throttle(Maneuver):
 	"""Simple throttle to maintain a desired speed."""
+	controls = ["throttle"]
 	
 	@classmethod
 	def get_output(cls, car, target, desired_speed=2300) -> SimpleControllerState:
@@ -242,17 +250,15 @@ class M_Throttle(Maneuver):
 			cls.controller.throttle = 0.02		# Maintain speed. (this prevents coasting deceleration from kicking in)
 		else:
 			cls.controller.throttle = 0			# Decelerate by coasting.
-
-	@classmethod
-	def control(cls, car, target, desired_speed=2300):
-		cls.get_output(car, target, desired_speed)
-		car.controller.throttle = cls.controller.throttle
+		
+		return cls.controller 
 
 class M_Powerslide(Maneuver):
 	"""Powerslide towards a target."""
 	"""We use two yaw thersholds, one for starting and one for ending the powerslide. 
 	 Both are dynamic and based on a bunch of factors that can be tweaked.
 	 """
+	controls = ["handbrake"]
 	active = False
 	threshold_begin_slide_angle = 90	# We should start powersliding when we are this many degrees away from facing the target. This should be tweaked constantly based on car speed and distance to target.
 	threshold_end_slide_angle = 25		# We should stop powersliding when we are this many degrees away from facing the target. This should be tweaked based on parameters involved when starting the powerslide.
@@ -295,8 +301,3 @@ class M_Powerslide(Maneuver):
 				#print("end angle: " + str(cls.threshold_end_slide_angle))
 
 		return cls.controller
-	
-	@classmethod
-	def control(cls, car, target):
-		cls.get_output(car, target)
-		car.controller.handbrake = cls.controller.handbrake

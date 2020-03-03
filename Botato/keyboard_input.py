@@ -5,6 +5,7 @@ from pynput import keyboard
 # Releasing keys does not fire an event if a modifier key is being pressed at the same time, so powersliding with Shift can get inputs stuck very easily.
 # In general, modifier keys should be avoided.
 
+buttons_down		= dict()
 toggles 			= dict()	# For toggles
 reactions 			= dict()
 

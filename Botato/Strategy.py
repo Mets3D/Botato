@@ -31,7 +31,6 @@ class Strategy:
 	target = MyVec3(0, 0, 0)
 	desired_speed = 2300
 
-	# TODO: both of the below methods should only take car as their parameter, but rename it to "car". It should include everything else, even the ball.
 	@classmethod
 	def evaluate(cls, car):
 		"""Return how good this strategy seems to be right now, 0-1. Tweaking these values can be quite tricky."""
@@ -47,10 +46,10 @@ class Strategy:
 	@classmethod
 	def control_car(cls, car):
 		""" Set the car's inputs using Maneuvers. """
-		cls.find_target(car)
-		return M_Speed_On_Ground.control(car, cls.target, 2300)
+		return M_Speed_On_Ground.control(car, cls.target, desired_speed=2300)
 
 class Strat_Defense(Strategy):
+	# TODO: Rename this to Strat_Retreat, cause that's what it's for.
 	name = "Defense"
 	target_before_jump = None
 	dont_dodge = False
@@ -170,11 +169,6 @@ class Strat_HitBallTowardsTarget(Strategy):
 
 		return cls.target
 
-	@classmethod
-	def control_car(cls, car):
-		cls.find_target(car)
-		return M_Speed_On_Ground.control(car, cls.target, 2300)
-
 class Strat_TouchPredictedBall(Strategy):
 	name = "Touch Predicted Ball"
 	
@@ -198,11 +192,6 @@ class Strat_TouchPredictedBall(Strategy):
 		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
 
 		return cls.target
-	
-	@classmethod
-	def control_car(cls, car):
-		cls.find_target(car)
-		return M_Speed_On_Ground.control(car, cls.target, 2300)
 
 class Strat_MoveToRandomPoint(Strategy):
 	"""Strategy for testing general movement, without having to worry about picking the target location correctly."""
@@ -233,11 +222,6 @@ class Strat_MoveToRandomPoint(Strategy):
 			cls.target = random_point
 
 		return cls.target
-	
-	@classmethod
-	def control_car(cls, car):
-		cls.find_target(car)
-		return M_Speed_On_Ground.control(car, cls.target, 2300)
 
 class Strat_ArriveWithSpeed(Strategy):
 	"""While working on this, I realized that arriving with a given speed is a task that requires fucking with too many aspects of the code, and also requires simulating the game. So how about I get back to this at a far future date?"""
@@ -335,11 +319,6 @@ class Strat_ArriveWithSpeed(Strategy):
 		# Remember that if we want to dodge into the ball, we can 
 		
 		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
-	
-	@classmethod
-	def control_car(cls, car):
-		cls.find_target(car)
-		return M_Speed_On_Ground.control(car, cls.target, 2300)
 
 strategies = [
 	Strat_Defense,

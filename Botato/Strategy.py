@@ -52,6 +52,9 @@ class Strategy:
 
 class Strat_Defense(Strategy):
 	name = "Defense"
+	target_before_jump = None
+	dont_dodge = False
+
 	@classmethod
 	def evaluate(cls, car):
 		value = 0
@@ -67,16 +70,58 @@ class Strat_Defense(Strategy):
 		cls.target = car.own_goal.location
 
 		need_to_avoid_ball = will_intersect(car)
+		avoidance_distance = 250	# TODOs: This doesn't seem to do anything, and it should be set based on some factors rather than magic number.
 
 		if need_to_avoid_ball and distance(car, ball) < 180:
+			# If we need to avoid the ball but we hit it...
 			car.send_quick_chats(QuickChats.CHAT_EVERYONE, QuickChats.Apologies_Whoops)
-		
+
+		if need_to_avoid_ball:
+			# Move the target behind where the ball is moving
+			# TODO: Alternatively, we could check either side of the intersected predicted ball and see which one is closer to us. This might be better tbh.
+			avoidance_direction = ball.velocity.normalized	# TODO: this needs to be tested!
+			angle_to_ball = angle_to(car, ball)
+			x_difference = car.location.x - ball.location.x
+			if angle_to_ball < 2:
+				cls.dont_dodge=True
+			else:
+				cls.dont_dodge=False
+			
+			if ball.velocity.size < 1:
+				# If the ball is barely moving, avoid it on the side of the ball that we're more angled towards
+				avoidance_direction = MyVec3(sign(angle_to_ball), 0, 0).normalized
+				# TODO: This can still be improved a fair bit, by preferring avoiding the ball on goal side or boost side depending on the situation.
+				print("Picking by angle")
+				if abs(angle_to_ball) < 2:
+					# If we are facing right at the ball, avoid it on the side we're closer to on the X axis.
+					avoidance_direction = MyVec3(x_difference, 0.0, 0.0).normalized
+					print("Picking by location")
+					if x_difference < 30:
+						# If we are perfectly aligned with the ball, just pick a side.
+							print("Picking arbitrarily")
+							avoidance_direction = MyVec3(1, 0, 0)
+			
+			cls.target = ball.location - avoidance_direction * avoidance_distance
+			
+			if car.wheel_contact:
+				cls.target_before_jump = cls.target
+			elif cls.target_before_jump:
+				cls.target = cls.target_before_jump
+
 		# NEXT UP:
 		# If our path is intersecting the ball, avoid the ball (In the future, we might want to hit the ball towards our own corner, actually)
 		# How to make this work with a predicted ball?
 		# Finish implementing will_intersect() in Utils.
 		# If we will intersect, the target should be put next to the ball, in the opposite direction of where it's currently moving. If it's moving slower, the target should be further away from the ball.
 
+	@classmethod
+	def control_car(cls, car):
+		""" Set the car's inputs using Maneuvers. """
+		cls.find_target(car)
+		controller = M_Speed_On_Ground.get_output(car, cls.target, 2300)
+		# if cls.dont_dodge:
+		# 	controller.jump=False
+		car.controller = controller
 
 class Strat_HitBallTowardsTarget(Strategy):
 	name = "Hit Ball Towards Target"

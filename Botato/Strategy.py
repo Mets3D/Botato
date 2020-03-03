@@ -48,7 +48,7 @@ class Strategy:
 		""" Set the car's inputs using Maneuvers. """
 		return M_Speed_On_Ground.control(car, cls.target, desired_speed=2300)
 
-class Strat_Defense(Strategy):
+class Strat_Retreat(Strategy):
 	# TODO: Rename this to Strat_Retreat, cause that's what it's for.
 	name = "Defense"
 	target_before_jump = None
@@ -58,8 +58,8 @@ class Strat_Defense(Strategy):
 	def evaluate(cls, car):
 		value = 0
 
-		between_ball_and_own_goal = between(car.location.y, ball.location.y, car.own_goal.location.y)
-		value += (1 - between_ball_and_own_goal) * 0.3
+		is_ball_between_car_and_own_goal = between(ball.location.y, car.location.y, car.own_goal.location.y)
+		value += (is_ball_between_car_and_own_goal) * 0.3
 		
 		cls.viability = value
 
@@ -321,7 +321,7 @@ class Strat_ArriveWithSpeed(Strategy):
 		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
 
 strategies = [
-	Strat_Defense,
+	Strat_Retreat,
 	Strat_HitBallTowardsTarget,
 	# Strat_TouchPredictedBall,
 	# Strat_MoveToRandomPoint,

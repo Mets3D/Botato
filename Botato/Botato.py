@@ -41,6 +41,10 @@ class Botato(BaseAgent):
 		self.training = None
 		self.saved_state = None			# For saving and loading states.
 		self.game_speed = 1.0
+		
+		# Snapshots
+		self.snapshots = []
+		self.last_snapshot = 0
 
 		self.active_strategy = Strategy.strategies[0]
 
@@ -97,13 +101,13 @@ class Botato(BaseAgent):
 			# Numpad 0-9 to load trainings.
 
 		# Take control of Botato
-		if(Keyboard.toggles['x']):
+		if Keyboard.toggles['x']:
 			self.controller.throttle = Keyboard.is_key_down("w") - Keyboard.is_key_down("s")
 			self.controller.pitch = -self.controller.throttle
 
 			self.controller.steer = Keyboard.is_key_down("d") - Keyboard.is_key_down("a")
 			self.controller.handbrake = Keyboard.is_key_down("shift")
-			if(self.controller.handbrake):
+			if self.controller.handbrake:
 				self.controller.roll = self.controller.steer
 			else:
 				self.controller.yaw = self.controller.steer
@@ -111,36 +115,46 @@ class Botato(BaseAgent):
 			self.controller.jump = Keyboard.is_key_down("space")
 			self.controller.boost = Keyboard.is_key_down("enter")
 
+		# Go back a snapshot and delete it.
+		def go_back_snapshot():
+			if len(self.snapshots) > 0:
+				snapshot = self.snapshots.pop()
+				print("Loading snapshot from time: %f" %snapshot[1])
+				self.set_game_state(snapshot[0])
+				self.last_snapshot = self.game_seconds
+
+		Keyboard.add_reaction("left", go_back_snapshot)
+		
 		# Load Training scenarios
-		if(Keyboard.is_key_down("[0]")):
+		if Keyboard.is_key_down("[0]"):
 			self.training = Training(self, "Diagonal Kickoff")
-		elif(Keyboard.is_key_down("[1]")):
+		elif Keyboard.is_key_down("[1]"):
 			self.training = Training(self, "Straight Kickoff")
-		elif(Keyboard.is_key_down("[2]")):
+		elif Keyboard.is_key_down("[2]"):
 			self.training = Training(self, "Prediction 1")
-		elif(Keyboard.is_key_down("[3]")):
+		elif Keyboard.is_key_down("[3]"):
 			self.training = Training(self, "Random Ball Impulse")
 		# Reset current training, without changing randomization.
-		if(Keyboard.is_key_down("r")):
+		if Keyboard.is_key_down("r"):
 			if self.training:
 				self.training.reset()
 
 		# Save/Load State
-		if(Keyboard.is_key_down("/")):
+		if Keyboard.is_key_down("/"):
 			print("Saving game state...")
 			self.saved_state = GameState.create_from_gametickpacket(self.packet)
-		if(Keyboard.is_key_down("*")):
+		if Keyboard.is_key_down("*"):
 			print("Loading game state...")
 			self.set_game_state(self.saved_state)
 
 		# Change Game Speed
-		if(Keyboard.is_key_down("-")):
+		if Keyboard.is_key_down("-"):
 			self.game_speed = max(self.game_speed-0.05, 0.05)
 			game_info_state = GameInfoState(game_speed=self.game_speed)
 			game_state = GameState(game_info=game_info_state)
 			self.set_game_state(game_state)
 			print("Slowing to %f" %self.game_speed)
-		if(Keyboard.is_key_down("+")):
+		if Keyboard.is_key_down("+"):
 			self.game_speed += 0.05
 			game_info_state = GameInfoState(game_speed=self.game_speed)
 			game_state = GameState(game_info=game_info_state)
@@ -155,14 +169,17 @@ class Botato(BaseAgent):
 				self.last_quick_chat = self.game_seconds
 
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
-			# game_info_state = GameInfoState(game_speed=6)
-			# game_state = GameState(game_info=game_info_state)
-			# self.set_game_state(game_state)
-
 			if not packet.game_info.is_round_active:
 				return self.controller	# Don't calculate anything during replays.
 
 			Preprocess.preprocess(self, packet)		# Cleaning up values
+
+			if self.game_seconds > self.last_snapshot + 2:
+				self.snapshots.append( (GameState.create_from_gametickpacket(self.packet), self.game_seconds) )
+				print("Saved a snapshot... num snapshots: %d" %len(self.snapshots))
+				self.last_snapshot = self.game_seconds
+				if len(self.snapshots) > 100:
+					self.snapshots.pop(0)
 
 			self.renderer.begin_rendering()
 			
@@ -183,7 +200,7 @@ class Botato(BaseAgent):
 
 			# Debug Render - only for index==0 car.
 			# if(self.index==0):
-			# Debug.render_all(self)
+			Debug.render_all(self)
 			self.renderer.end_rendering()
 
 			self.keyboard_input()

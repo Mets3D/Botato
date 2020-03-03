@@ -18,6 +18,7 @@ arena = MyVec3(8200, 10280, 2050)
 
 def will_intersect(car):
 	"""If we went in a straight line forwards at our current speed, would we hit the ball?"""
+	# TODO: Would be nice to use predicted speed instead of just our current speed.
 	car_loc = car.location
 	prev_car_loc = MyVec3(car_loc)
 	dt = 1/60

@@ -5,6 +5,8 @@ from Objects import *
 from Utils import *
 from Training import *
 
+# TODO IMPORTANT: get_output should never change the car's controls!!!
+
 def get_yaw_to_target(car, target):
 	# This gives better results than local coords yaw difference, particularly when on the wall.
 	return get_yaw_relative(car.location.x, car.location.y, target.x, target.y, car.rotation.yaw)

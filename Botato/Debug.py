@@ -14,8 +14,8 @@ debug_strats 		= True
 debug_controls 		= True
 debug_dodge 		= True
 debug_prediction 	= True
-debug_car 			= True
-debug_ball 			= True
+debug_car			= True
+debug_ball			= True
 debug_target 		= True
 debug_boostpads 	= False
 
@@ -200,7 +200,7 @@ def render_all(car):
 				
 	# Render Car Transforms
 		vec2str = lambda vec: str(int(vec.x)) + " " + str(int(vec.y)) + " " + str(int(vec.z))
-		rot2str = lambda rot: str(int(rot.pitch*1000)) + " " + str(int(rot.yaw*1000)) + " " + str(int(rot.roll*1000))
+		rot2str = lambda rot: str(int(rot.pitch*RAD_TO_DEG)) + " " + str(int(rot.yaw*RAD_TO_DEG)) + " " + str(int(rot.roll*RAD_TO_DEG))
 		if(debug_car):
 			text_2d(car, 1400, 10, "Car Loc: " + vec2str(car.location) )
 			text_2d(car, 1400, 40, "Car Vel: " + vec2str(car.velocity) )
@@ -216,6 +216,7 @@ def render_all(car):
 			text_2d(car, 1400, 300, "Ball Loc: " + vec2str(ball.location))
 			text_2d(car, 1400, 330, "Ball Vel: " + vec2str(ball.velocity))
 			text_2d(car, 1400, 360, "Ball Spd: " + str(int(ball.velocity.length)))
+			text_2d(car, 1400, 410, "Angle to ball: " + str(angle_to(car, ball)))
 
 	# Render Strategies
 		if(debug_strats):

@@ -5,8 +5,11 @@ from pynput import keyboard
 # Releasing keys does not fire an event if a modifier key is being pressed at the same time, so powersliding with Shift can get inputs stuck very easily.
 # In general, modifier keys should be avoided.
 
-buttons = dict()
-toggles = dict()
+toggles 			= dict()	# For toggles
+reactions 			= dict()
+
+def add_reaction(key_name, function):
+	reactions[key_name] = function
 
 def is_toggle(key_name):
 	if not key_name in toggles.keys():
@@ -16,8 +19,8 @@ def is_toggle(key_name):
 
 def is_key_down(*key_names):
 	for key_name in key_names:
-		if(key_name in list(buttons.keys())):
-			if not buttons[key_name]: 
+		if(key_name in list(buttons_down.keys())):
+			if not buttons_down[key_name]: 
 				return False
 		else:
 			return False
@@ -36,18 +39,21 @@ def process_key(key_ob):
 			return "[%s]" %str(key_ob.vk-96)
 		return key_ob.char
 
-def on_press(key_ob):
+def while_key_down(key_ob):
 	key = process_key(key_ob)
-	buttons[key] = True
-	if(key in list(toggles.keys())):
+	buttons_down[key] = True
+
+	if key in list(toggles.keys()):
 		toggles[key] = not toggles[key]
 
-def on_release(key_ob):
+def on_key_up(key_ob):
 	key = process_key(key_ob)
-	buttons[key] = False
+	if key in reactions.keys():
+		reactions[key]()
+	buttons_down[key] = False
 
 def start():
 	listener = keyboard.Listener(
-		on_press=on_press,
-		on_release=on_release)
+		on_press=while_key_down,
+		on_release=on_key_up)
 	listener.start()

@@ -5,8 +5,6 @@ from Objects import *
 from Utils import *
 from Training import *
 
-# TODO IMPORTANT: get_output should never change the car's controls!!!
-
 def get_yaw_to_target(car, target):
 	# This gives better results than local coords yaw difference, particularly when on the wall.
 	return get_yaw_relative(car.location.x, car.location.y, target.x, target.y, car.rotation.yaw)
@@ -32,7 +30,6 @@ class Maneuver():
 
 class M_Speed_On_Ground(Maneuver):
 	"""Maneuver for moving on the floor as fast as possible towards a target. Not necessarily ideal for hitting the ball!"""
-	# TODO: Wavedashing & Half-Flipping? Need to figure out how I want to structure the concept of "Maneuvers".
 	controls = ["throttle", "steer", "pitch", "yaw", "roll", "jump", "boost", "handbrake"]
 
 	@classmethod
@@ -49,13 +46,13 @@ class M_Speed_On_Ground(Maneuver):
 		
 		# Steering
 		turn_power = 20	# Increasing makes it align faster but be more wobbly, decreasing makes it less wobbly but align slower.
-		# TODO: This could possibly be improved by live-tuning turn_power based on the situation(probably giving it an inverse square relationship to yaw_to_target).
+		# TEST: This could possibly be improved by live-tuning turn_power based on the situation(probably giving it an inverse square relationship to yaw_to_target).
 		# This can be tested by running the game at a high speed, because then Botato's wobbling becomes exacerbated.
 		controller.steer = clamp(car.yaw_to_target/turn_power, -1, 1)
 
 		if False:
 			# Drifting
-			# If we are powersliding but we are aligned with our target, reverse steering, to drift!. TODO: not sure if this is actually beneficial, probably not.
+			# If we are powersliding but we are aligned with our target, reverse steering, to drift!. TEST: not sure if this is actually beneficial, probably not.
 			drifting_timer = 0.6	# Time spent powersliding that has to pass until we switch over to drifting.
 			if(	False and
 				car.controller.handbrake 
@@ -132,7 +129,7 @@ class M_Dodge(Maneuver):
 				controller.jump = True	# "Hold" the jump key
 			
 			# Step 2.5 - Release the jump key just before the dodge.
-			if( dodge_delay >= car.game_seconds - cls.last_jump >= dodge_delay-0.1		# We're 0.03s away from the time when we should dodge. (TODO: I hope this doesn't break at low framerate :S)
+			if( dodge_delay >= car.game_seconds - cls.last_jump >= dodge_delay-0.05		# FIXME: If this number is too low, some of Botato's flips will fail. It's better to dodge late than never, so this should be fixed.
 				and not cls.dodged):
 				controller.jump = False
 			
@@ -168,7 +165,7 @@ class M_Dodge(Maneuver):
 				abs(car.av.z) < 1500												,# We aren't spinning like crazy
 				car.speed+500 < desired_speed										,# TODO: At high enough distances, it could be worth it to dodge and over-accelerate, then decelerate to correct for it.
 				speed_toward_target_ratio > speed_toward_target_ratio_threshold		,# We are moving towards the target with most of our speed. TODO: this should be covered by angular velocity checks instead, I feel like.
-				car.yaw_to_target < 40											,# We are more or less facing the target.
+				car.yaw_to_target < 40												,# We are more or less facing the target.
 				car.distance_from_target > 1500										,# We are far enough away from the target TODO: dodge_distance + overshoot_threshold
 				car.location.z < 18													,# We are on the floor
 				car.wheel_contact													,# We are touching the floor (slightly redundant, yes)
@@ -208,7 +205,7 @@ class M_Boost(Maneuver):
 			(0 > car.rotation.pitch * RAD_TO_DEG > -50),		# We are not facing the sky or ground (possibly redundant)
 			#abs(car.rotation.roll) * RAD_TO_DEG < 90, 			# We are not sideways/on a wall (possibly redundant/wrong to have this, idk.)
 			car.speed < max_speed, 								# We are not going full speed
-			car.speed + base_accel+boost_accel < desired_speed,	# We aren't going fast enough. (TODO: We should only use boost if we can't reach desired speed within the required distance via just throttle. Although, reaching the desired speed faster makes our predictions more precise, sooner.
+			car.speed + base_accel+boost_accel < desired_speed,	# We aren't going fast enough. (NOTE: Although this can waste boost if we could reach the desired speed without it, getting to the desired speed faster gives us better predictions sooner.
 		])):
 			cls.controller.boost = True
 		else:
@@ -254,7 +251,7 @@ class M_Powerslide(Maneuver):
 	threshold_begin_slide_angle = 90	# We should start powersliding when we are this many degrees away from facing the target. This should be tweaked constantly based on car speed and distance to target.
 	threshold_end_slide_angle = 25		# We should stop powersliding when we are this many degrees away from facing the target. This should be tweaked based on parameters involved when starting the powerslide.
 	last_slide_start = 0
-	slide_gap = 1						# Time that has to pass before reactivating. TODO does this work?	# TODO: Should this be neccessary? :/
+	slide_gap = 1						# Time that has to pass between two powerslides. This is nice to have because over-turning from a powerslide can result in being stuck eternally powersliding, which is embarrassing.
 
 	# TODO: We shouldn't powerslide when going quite slowly, I think. Or only at extreme angles, if that.
 

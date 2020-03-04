@@ -19,11 +19,8 @@ from rlbot.utils.game_state_util import GameState, GameInfoState
 from RLUtilities import Simulation
 from RLUtilities.Simulation import Ball, Pitch, ray
 
-# TODO: Need to figure out how I can find time to bump and boost - which are things that I don't want to belong to a single strategy - every strategy should be doing these two things when the situation allows for it. Also, avoiding incoming demos.
-
 class Strategy:
 	""" Base Class for Strategies. """
-	# TODO: Should Strategies be able to use other strategies? I'm not sure!
 	
 	# Class Variables
 	name = "StrategyName"
@@ -49,7 +46,6 @@ class Strategy:
 		return M_Speed_On_Ground.control(car, cls.target, desired_speed=2300)
 
 class Strat_Retreat(Strategy):
-	# TODO: Rename this to Strat_Retreat, cause that's what it's for.
 	name = "Defense"
 	target_before_jump = None
 	dont_dodge = False
@@ -77,8 +73,8 @@ class Strat_Retreat(Strategy):
 
 		if need_to_avoid_ball:
 			# Move the target behind where the ball is moving
-			# TODO: Alternatively, we could check either side of the intersected predicted ball and see which one is closer to us. This might be better tbh.
-			avoidance_direction = ball.velocity.normalized	# TODO: this needs to be tested!
+			avoidance_direction = ball.velocity.normalized	# TEST: this needs to be tested!
+			# Currently, we only pick avoidance direction based on our location when the ball is not moving. Otherwise we will always pick based on our facing angle. This is not correct! Improve with testing.
 			angle_to_ball = angle_to(car, ball)
 			x_difference = car.location.x - ball.location.x
 			if angle_to_ball < 2:
@@ -124,6 +120,14 @@ class Strat_Retreat(Strategy):
 
 class Strat_HitBallTowardsTarget(Strategy):
 	name = "Hit Ball Towards Target"
+	# TODO:
+	# 	Create tests for this.
+	# 	Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
+	# 	Could also aim at the opposite corner of the net rather than the center.
+	#	Tweak the maths on desired_distance_from_ball.
+	#	parameterize the target so it doesn't have to be the middle of the enemy goal.
+	#	Make this not abysmal when Botato is to the side between the ball and the target (he will keep near-missing the ball)
+	#	Make sure Botato doesn't yeet up to the ceiling.
 
 	@classmethod
 	def evaluate(cls, car):
@@ -137,7 +141,6 @@ class Strat_HitBallTowardsTarget(Strategy):
 	@classmethod
 	def find_target(cls, car):
 		# Old code to hit ball towards net.
-		# TODO: Refactor so we can hit ball towards any target
 
 		# Ideally, this Strategy will only become the most viable one when grabbing the target from this other strategy will be good enough. (No turning around or such involved)
 		ball = Strat_TouchPredictedBall.find_target(car)
@@ -150,8 +153,6 @@ class Strat_HitBallTowardsTarget(Strategy):
 		# We project a line from the target towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
 		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the target) the ball.
 		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
-		# TODO: This works abysmally when Botato is between the ball and the target. (he will hit the ball away from the target)
-		#		And it works just as badly when he's to the side between the ball and the target (he will keep near-missing the ball)
 		goal_ball_vec = car.enemy_goal.location - ball
 		ball_dist_ratio = car_ball_dist/goal_ball_dist
 		desired_distance_from_ball = car_ball_dist/2
@@ -162,10 +163,6 @@ class Strat_HitBallTowardsTarget(Strategy):
 		cls.target[2]=17
 		target_obj = GameObject()
 		target_obj.location = raycast(cls.target, ball)
-
-		# TODO Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
-		# TODO could also aim at the opposite corner of the net rather than the center.
-		# TODO avoid hitting ball into our own net, but probably don't do this inside this strategy. Instead, in those situations, this shouldn't be the active strategy to begin with.
 
 		return cls.target
 
@@ -189,7 +186,7 @@ class Strat_TouchPredictedBall(Strategy):
 		# Change desired speed so that when dt is higher, make it lower, and when it's lower, make it higher??
 		cls.desired_speed = dist / max(0.01, dt)
 		cls.target = MyVec3(predicted_ball.physics.location)
-		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
+		# Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
 
 		return cls.target
 
@@ -318,7 +315,7 @@ class Strat_ArriveWithSpeed(Strategy):
 		#time_to_accelerate = 
 		# Remember that if we want to dodge into the ball, we can 
 		
-		Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
+		# Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
 
 strategies = [
 	Strat_Retreat,

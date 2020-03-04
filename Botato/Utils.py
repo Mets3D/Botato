@@ -7,7 +7,7 @@ from rlbot.utils.structures.quick_chats import QuickChats
 from RLUtilities.Simulation import Ball, Pitch, ray
 
 # Constants
-RAD_TO_DEG = 180/math.pi	# TODO make this into a util function.
+RAD_TO_DEG = 180/math.pi
 # Accelerations (uu/s^2)
 ACCEL_BOOST = 991.666
 ACCEL_BRAKE = -3500
@@ -25,13 +25,14 @@ def will_intersect(car):
 	collision_threshold = 175
 
 	# Draw a line in the direction we're moving
-	car.renderer.draw_line_3d(car_loc, car_loc+car.velocity, car.renderer.green())
+	# car.renderer.draw_line_3d(car_loc, car_loc+car.velocity, car.renderer.green())
 
 	for ps in car.ball_prediction.slices:
 		ball_loc = MyVec3(ps.physics.location)
 		car_loc += car.velocity * dt
 		if distance(car_loc, ball_loc) < collision_threshold:
-			car.renderer.draw_line_3d(prev_car_loc, car_loc, car.renderer.red())
+			# If we are likely to hit the ball, draw the line red.
+			# car.renderer.draw_line_3d(prev_car_loc, car_loc, car.renderer.red())
 			return True
 	
 	return False
@@ -69,8 +70,9 @@ bounce_counter = 0
 
 def reachable(car, location, time_left):
 	"""This should be called on all predicted balls, to find the soonest predicted ball that we should drive towards."""
-	# This function should evolve as does Botato, since as he learns new things, the ball will become reachable in more situations!
-	# This could also be called for enemy cars to check if we can reach the ball before they do, but since this function relies on knowing a bot's abilities, that will be very unreliable.
+	# TODO: We should try to make this accurate when Botato is aligned with the predicted(ground) ball.
+	# If Botato is facing away from the ball, we should be focusing on turning around, finding a reachable ball is not important.
+
 	global bounce_counter
 	if(location.z > 94):
 		return False	# No aerialing :)
@@ -80,10 +82,7 @@ def reachable(car, location, time_left):
 		if(dist/(time_left+0.001) < 2000):
 			return True
 	
-	# TODO: do some really fancy stuff to correctly calculate how fast we can get there. The more accurate this function is, the sooner Botato might be able to go for the ball. Of course as long as we are only hitting ground balls, it doesn't really matter.
-	
 	# To be more accurate, we want to get a good estimate of what average velocity we can achieve over some amount of time, given an amount of boost.
-	# 
 	arrival_speed = 2300#-500
 	throttle_accel = get_throttle_accel(car.speed)											# Amount of velocity we are gaining from throttle right now. (0 if self.speed>1410)
 	boost_to_target_time = (throttle_accel + ACCEL_BOOST) / max(10, (arrival_speed - car.speed)) 	# Time it would take to reach target speed with boost
@@ -172,7 +171,7 @@ def accel_distance(initial_speed, target_speed, boost, speed_error=1) -> list:
 			boost_remaining -= 3/100 / tick_rate
 		# Decelerating
 		elif( (cum_speed - target_speed) > 300 ):
-			total_accel = ACCEL_BRAKE		# Braking (TODO: this code has to roughly match the throttle logic in cs_move_on_ground, which is to say, this code should be unifited somehow.)
+			total_accel = ACCEL_BRAKE		# Braking (TODO: this code has to roughly match the throttle logic in cs_move_on_ground, which is to say, this code should be unified somehow.)
 		elif( cum_vel > target_speed ):
 			total_accel = ACCEL_COAST		# Coasting
 		# There is no code for maintained speed here, since when that would hit in, it would mean it's time to return our cum_distance.

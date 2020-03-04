@@ -19,6 +19,12 @@ from rlbot.utils.game_state_util import GameState, GameInfoState
 from RLUtilities import Simulation
 from RLUtilities.Simulation import Ball, Pitch, ray
 
+# NEXT UP: 
+# Improve Strat_HitBallTowardsTarget.
+# Improve and implement more maneuvers as needed (we are probably over-eager on dodging).
+# Work on maths and improve self-simulation, prediction, therefore improving things like will_intersect(), reachable(), soonest_reachable(), etc.
+# Need to figure out how I can find time to bump and boost - which are things that I don't want to belong to a single strategy - every strategy should be doing these two things when the situation allows for it. Also, avoiding incoming demos.
+
 class Botato(BaseAgent):
 	def initialize_keyboard(self):
 		Keyboard.start()
@@ -117,10 +123,9 @@ class Botato(BaseAgent):
 			self.set_game_state(game_state)
 			print("Speeding to %f" %self.game_speed)
 
-	def send_quick_chats(self, chat_mode, chat_code, number=1, timer=1):
-		# TODO: this can be improved... maybe a separate thread?
+	def send_quick_chats(self, chat_mode, chat_code, count=1, timer=1):
 		if self.last_quick_chat + timer < self.game_seconds:
-			for i in range(0, number):
+			for i in range(0, count):
 				self.send_quick_chat(chat_mode, chat_code)
 				self.last_quick_chat = self.game_seconds
 
@@ -162,6 +167,6 @@ class Botato(BaseAgent):
 
 			self.keyboard_input()
 
-			# Save a (shallow!!! Vectors aren't saved, just floats!) copy of self, to use in next tick. TODO: we should strive for a design where this is never needed.
+			# Save a (shallow!!! Vectors aren't saved, just floats!) copy of self, to use in next tick.
 			self.last_self = copy.copy(self)
 			return self.controller

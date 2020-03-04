@@ -15,10 +15,6 @@ from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 from rlbot.utils.game_state_util import GameState, GameInfoState
 
-# RLUtilities
-from RLUtilities import Simulation
-from RLUtilities.Simulation import Ball, Pitch, ray
-
 # NEXT UP: 
 # Improve Strat_HitBallTowardsTarget.
 # Improve and implement more maneuvers as needed (we are probably over-eager on dodging).

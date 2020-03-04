@@ -13,7 +13,7 @@ ACCEL_COAST = -525
 ACCEL_GRAV = 650
 
 arena = MyVec3(8200, 10280, 2050)
-
+#test
 def will_intersect(car):
 	"""If we went in a straight line forwards at our current speed, would we hit the ball?"""
 	# TODO: Would be nice to use predicted speed instead of just our current speed.

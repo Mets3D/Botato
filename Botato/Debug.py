@@ -176,7 +176,7 @@ def render_all(car):
 			# Target Location Vector
 			vector_2d_3d(car, car.active_strategy.target, color=car.renderer.white(), draw_2d=True, draw_3d=True)
 			
-			text_2d(car, 10, 240, "Yaw to target: " + str(int(car.yaw_car_to_target)))
+			text_2d(car, 10, 240, "Yaw to target: " + str(int(car.yaw_to_target)))
 			text_2d(car, 10, 270, "Distance from target: " + str(int(car.distance_from_target)))
 			
 			time_to_reach = -1 if car.speed==0 else distance(car.location, car.active_strategy.target)/car.speed
@@ -246,5 +246,5 @@ def render_all(car):
 			car.renderer.draw_rect_2d(steer, forward, 20, 20, True, color)
 			
 			# Angular Velocity : Yaw Difference ratio
-			#av_to_yaw_ratio = (car.av.z) / (car.yaw_car_to_target+0.0000001)
+			#av_to_yaw_ratio = (car.av.z) / (car.yaw_to_target+0.0000001)
 			#text_2d(car, ctrl_disp[0], ctrl_disp[1]+30, "AV.z:Yaw = " + str( av_to_yaw_ratio ))

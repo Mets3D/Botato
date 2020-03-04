@@ -1,5 +1,4 @@
-from Unreal import Rotator
-from Unreal import MyVec3
+from Unreal import Rotator, MyVec3
 #from rlutilities.linear_algebra import vec3
 from Objects import *
 from Utils import *
@@ -8,10 +7,14 @@ from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket, Vector3
 
 def preprocess(self, packet: GameTickPacket):
+	# RLBot
 	self.packet = packet
 	self.controller = SimpleControllerState()
 
+	# Time
 	self.game_seconds = packet.game_info.seconds_elapsed
+	self.dt = self.game_seconds - self.time_old
+	self.time_old = self.game_seconds
 
 	# Ball
 	ball.location = MyVec3(packet.game_ball.physics.location)
@@ -30,9 +33,10 @@ def preprocess(self, packet: GameTickPacket):
 		self.enemy_goal = blue_goal
 		self.own_goal = orange_goal
 	
-	# Transforms
+	# Car Transforms
 	self.car = packet.game_cars[self.index]
 	self.location = MyVec3(self.car.physics.location)
+	self.rotation = Rotator()
 	self.rotation.set_from_rotator(self.car.physics.rotation)
 	self.velocity = MyVec3(self.car.physics.velocity)
 	self.av = MyVec3(self.car.physics.angular_velocity)
@@ -45,9 +49,6 @@ def preprocess(self, packet: GameTickPacket):
 	
 	if(self.last_self):
 		self.acceleration = self.velocity - self.last_self.velocity
-
-	self.dt = self.game_seconds - self.time_old
-	self.time_old = self.game_seconds
 
 	# Car Math
 	self.boost = self.car.boost
@@ -77,10 +78,14 @@ def preprocess(self, packet: GameTickPacket):
 		else:
 			self.opponents.append(bot)
 
-	#boosts
+	# Boost pads
 	self.boost_pads = packet.game_boosts
 	self.boost_locations = self.get_field_info().boost_pads
 
 	# Avoid NoneType errors on the first tick
 	if(not self.last_self):
 		self.last_self=self	# On the first tick, the last packet will actually be the current packet, so any deltas we calculate will be 0.
+
+	# Derived values commonly used by Strategies or Maneuvers. Feel free to keep adding stuff, if it's used in two places and easy to calculate, put it here.
+	self.yaw_to_target = get_yaw_relative(self.location.x, self.location.y, self.active_strategy.target.x, self.active_strategy.target.y, self.rotation.yaw)
+	self.distance_from_target = (self.location - self.active_strategy.target).length

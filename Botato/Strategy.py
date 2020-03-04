@@ -195,10 +195,10 @@ class Strat_TouchPredictedBall(Strategy):
 
 class Strat_MoveToRandomPoint(Strategy):
 	"""Strategy for testing general movement, without having to worry about picking the target location correctly."""
-	
 	name = "Move To Random Point"
-	bias_boost = 0.6
-	bias_bump = 0.6
+
+	ETA = 0			# Initial estimation of how long it would take to get to the current target.
+	start_time = 0	# Time when we started going towards current target
 	
 	@classmethod
 	def evaluate(cls, car):
@@ -216,8 +216,8 @@ class Strat_MoveToRandomPoint(Strategy):
 			cls.desired_speed = 500+random.random()*1800
 			cls.desired_speed = 2300
 			dist = distance(car.location, random_point)
-			car.ETA = distance_to_time(ACCEL_BOOST, dist, car.speed)
-			car.start_time = car.game_seconds
+			cls.ETA = distance_to_time(ACCEL_BOOST, dist, car.speed)
+			cls.start_time = car.game_seconds
 
 			cls.target = random_point
 

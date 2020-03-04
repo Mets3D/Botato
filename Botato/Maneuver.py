@@ -51,8 +51,7 @@ class M_Speed_On_Ground(Maneuver):
 		turn_power = 20	# Increasing makes it align faster but be more wobbly, decreasing makes it less wobbly but align slower.
 		# TODO: This could possibly be improved by live-tuning turn_power based on the situation(probably giving it an inverse square relationship to yaw_to_target).
 		# This can be tested by running the game at a high speed, because then Botato's wobbling becomes exacerbated.
-		yaw_car_to_target = get_yaw_to_target(car, target)
-		controller.steer = clamp(yaw_car_to_target/turn_power, -1, 1)
+		controller.steer = clamp(car.yaw_to_target/turn_power, -1, 1)
 
 		if False:
 			# Drifting
@@ -60,7 +59,7 @@ class M_Speed_On_Ground(Maneuver):
 			drifting_timer = 0.6	# Time spent powersliding that has to pass until we switch over to drifting.
 			if(	False and
 				car.controller.handbrake 
-				#and abs(yaw_car_to_target) < 90 
+				#and abs(self.yaw_to_target) < 90 
 				#and abs(car.speed / speed_toward_target) > 1.1
 				and car.controller.steer==1
 				and car.game_seconds - car.powersliding_since > drifting_timer):
@@ -103,13 +102,10 @@ class M_Dodge(Maneuver):
 		controller.yaw = car.controller.yaw
 		controller.roll = car.controller.roll
 
-		yaw_car_to_target = get_yaw_to_target(car, target)
-
 		dodge_duration = 1.3	# Rough expected duration of a dodge.
 		dodge_distance = min(car.speed+500, 2299) * dodge_duration		# Expected dodge distance based on our current speed. (Dodging adds 500 to our speed)
 
 		# Speed toward target
-		distance_from_target = (car.location - target).length
 		velocity_at_car = (car.location + car.velocity/120)		# per tick, rather than per second. Feels like it shouldn't matter, but I guess it does. TODO still not really sure if this is the right way to do this, but it does what I wanted it to.
 		distance_now = distance(car.location, target)
 		distance_next = distance(velocity_at_car, target)
@@ -172,8 +168,8 @@ class M_Dodge(Maneuver):
 				abs(car.av.z) < 1500												,# We aren't spinning like crazy
 				car.speed+500 < desired_speed										,# TODO: At high enough distances, it could be worth it to dodge and over-accelerate, then decelerate to correct for it.
 				speed_toward_target_ratio > speed_toward_target_ratio_threshold		,# We are moving towards the target with most of our speed. TODO: this should be covered by angular velocity checks instead, I feel like.
-				yaw_car_to_target < 40												,# We are more or less facing the target.
-				distance_from_target > 1500											,# We are far enough away from the target TODO: dodge_distance + overshoot_threshold
+				car.yaw_to_target < 40											,# We are more or less facing the target.
+				car.distance_from_target > 1500										,# We are far enough away from the target TODO: dodge_distance + overshoot_threshold
 				car.location.z < 18													,# We are on the floor
 				car.wheel_contact													,# We are touching the floor (slightly redundant, yes)
 				car.game_seconds - car.last_wheel_contact > cls.wheel_contact_delay	,# We haven't just landed (Trying to jump directly after landing will result in disaster, except after Wavedashing).
@@ -201,15 +197,13 @@ class M_Boost(Maneuver):
 		yaw_limit = 10
 		max_speed = 2299
 		#z_limit = 100
-		
-		yaw_car_to_target = get_yaw_to_target(car, target)
 
 		base_accel = car.dt * car.throttle_accel
 		boost_accel = car.dt * ACCEL_BOOST
 
 		if(all([
 			car.controller.handbrake == False,					# We are not powersliding (TODO: We might actually want to boost in the beginning (and/or end) of powersliding.)
-			abs(yaw_car_to_target) < yaw_limit,					# We are reasonably aligned with our target
+			abs(car.yaw_to_target) < yaw_limit,					# We are reasonably aligned with our target
 			#car.location.z < z_limit, 							# We are not on a wall or goalpost (for now) (delete this when facing towards target is implemented, then just add a roll check ro make sure we aren't upside down or something...)
 			(0 > car.rotation.pitch * RAD_TO_DEG > -50),		# We are not facing the sky or ground (possibly redundant)
 			#abs(car.rotation.roll) * RAD_TO_DEG < 90, 			# We are not sideways/on a wall (possibly redundant/wrong to have this, idk.)
@@ -231,15 +225,12 @@ class M_Throttle(Maneuver):
 		# TODO: powersliding has different results in certain situations with throttle=0 or throttle=1. Would those be useful?
 		# TODO: sometimes we might want to reverse? But really only to half-flip, which we can't do yet. Even if we learn it, sometimes we might want to drive backwards into the ball and only half-flip when we get there.
 
-		distance_from_target = (car.location - target).length
-		yaw_car_to_target = get_yaw_to_target(car, target)
-
 		if False:
 			# TODO: When we are very close to the target and facing away from it, we should probably not throttle much. (Although throttling zero will just result in stopping)
 			if(
-				abs(yaw_car_to_target) > 40	# This number should be some function of distance from target?
-				and distance_from_target < 1000):
-					cls.controller.throttle = (distance_from_target/1000) * (yaw_car_to_target) / 40
+				abs(car.yaw_to_target) > 40	# This number should be some function of distance from target?
+				and car.distance_from_target < 1000):
+					cls.controller.throttle = (car.distance_from_target/1000) * (car.yaw_to_target) / 40
 					cls.controller.throttle = clamp(cls.controller.throttle, 0, 1)
 		
 		if(car.speed - desired_speed > 300):	# TODO: The speed threshold of 300 should be adjusted based on how far we are from the target. If we are far away, we'll have time to decelerate via coasting, but if not then we need to brake sooner.
@@ -269,11 +260,9 @@ class M_Powerslide(Maneuver):
 
 	@classmethod
 	def get_output(cls, car, target) -> SimpleControllerState:
-		yaw_car_to_target = get_yaw_to_target(car, target)
-		
 		# Step 2 - Continue Powersliding
 		if(		cls.active
-				and abs(yaw_car_to_target) > cls.threshold_end_slide_angle):
+				and abs(car.yaw_to_target) > cls.threshold_end_slide_angle):
 			cls.controller.handbrake = True
 		# Step 3 - Finish powersliding
 		else:		
@@ -287,9 +276,9 @@ class M_Powerslide(Maneuver):
 			# TODO: The begin threshold will need to go even lower, the faster we are going. This might still be prone to orbiting.
 			cls.threshold_begin_slide_angle = 40
 			end_threshold_yaw_factor = 0.6
-			cls.threshold_end_slide_angle = abs(yaw_car_to_target) * end_threshold_yaw_factor
+			cls.threshold_end_slide_angle = abs(car.yaw_to_target) * end_threshold_yaw_factor
 			
-			if all([	abs(yaw_car_to_target) > cls.threshold_begin_slide_angle,
+			if all([	abs(car.yaw_to_target) > cls.threshold_begin_slide_angle,
 						car.location.z < 50,
 						car.wheel_contact,
 						car.speed > 500,
@@ -297,7 +286,7 @@ class M_Powerslide(Maneuver):
 				cls.active=True
 				cls.last_slide_start = car.game_seconds
 				#print("Starting powerslide...")
-				#print("current angle: " + str(abs(yaw_car_to_target)))
+				#print("current angle: " + str(abs(car.yaw_to_target)))
 				#print("end angle: " + str(cls.threshold_end_slide_angle))
 
 		return cls.controller

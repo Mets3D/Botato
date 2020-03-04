@@ -127,7 +127,6 @@ def optimal_speed(dist, time_left, current_speed):
 
 def distance_to_time(distance, initial_speed, acceleration):
 	""" Calculate time it would take to move distance amount with an initial speed and a constant acceleration. Does not take into account turning or anything along those lines. """
-	# Also, acceleration is rarely constant, and when it is, it's 0. So that's pretty gay. I wonder how I'm gonna work around that, cause I have no clue.
 	eta = quadratic(acceleration, initial_speed, distance, positive_only=True)
 	if(eta):
 		return eta[0]

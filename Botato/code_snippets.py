@@ -100,11 +100,11 @@ def turn_radius(speed):
 		if(self.game_seconds > self.powerslide_until):
 			self.powersliding=False
 	elif(not self.powersliding and 
-			yaw_car_to_target * RAD_TO_DEG > 35 and
+			yaw_to_target * RAD_TO_DEG > 35 and
 			self.velocity.length > 300 ):
 		self.powersliding=True
 		self.drift_vel_fac = (self.velocity.length/2000/16)
-		self.drift_yaw_fac = (yaw_car_to_target * RAD_TO_DEG /65 /16)
+		self.drift_yaw_fac = (yaw_to_target * RAD_TO_DEG /65 /16)
 		self.powerslide_until = self.game_seconds + self.drift_vel_fac + self.drift_yaw_fac	# Powerslide for some time depending on velocity and angle.
 		controller.handbrake = True
 
@@ -179,11 +179,11 @@ def turn_radius(speed):
 		
 		@classmethod
 		def get_output(cls, car, target) -> SimpleControllerState:
-			delta_yaw = abs((car.yaw_car_to_target - car.last_self.yaw_car_to_target))*(1/car.dt)							# How fast we are approaching the correct alignment, in degrees/sec
-			time_to_aligned = car.yaw_car_to_target / (delta_yaw+0.00000001)													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
+			delta_yaw = abs((car.yaw_to_target - car.last_self.yaw_to_target))*(1/car.dt)							# How fast we are approaching the correct alignment, in degrees/sec
+			time_to_aligned = car.yaw_to_target / (delta_yaw+0.00000001)													# How long it will take(in seconds) at our current turning speed to line up with the target. Used for Powersliding.
 			time_threshold = 1				# We should keep powersliding if the estimated time to alignment based on delta_Yaw is greater than this many seconds.
 			if(
-				(abs(car.yaw_car_to_target) > cls.yaw_threshold		# We're facing far away from the target.
+				(abs(car.yaw_to_target) > cls.yaw_threshold		# We're facing far away from the target.
 				or time_to_aligned > time_threshold)				# Or the estimated time to alignment is high.
 				and car.location.z < 50								# We aren't on a wall.
 				and car.wheel_contact								# We are touching the ground.
@@ -205,7 +205,7 @@ def turn_radius(speed):
 			slide_duration = 0.3		# Max slide duration.
 			time_gap = 0.5				# Time that has to pass before this maneuver can be re-activated.
 			if(
-				Powerslide1.yaw_threshold > abs(car.yaw_car_to_target) > yaw_threshold
+				Powerslide1.yaw_threshold > abs(car.yaw_to_target) > yaw_threshold
 				and (car.game_seconds < cls.powerslide_until
 				or car.game_seconds > cls.powerslide_until + time_gap)
 				and car.location.z < 50								# We aren't on a wall.

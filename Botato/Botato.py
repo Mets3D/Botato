@@ -27,66 +27,22 @@ class Botato(BaseAgent):
 	def initialize_agent(self):
 		super().initialize_agent()
 		
+		self.active_strategy = Strategy.strategies[0]
+
+		# Debug and testing tools
 		self.initialize_keyboard()
-
-		#Debug values updated by MoveToRandomPoint, for now.
-		self.ETA = 0				# Time estimated that it will take us to get to target
-		self.start_time = 0			# Time when we start going towards current target
-
-		# RLBot
-		self.controller = SimpleControllerState()
-		self.ball_prediction = None
-
-		# Debug Tools
 		self.training = None
 		self.saved_state = None			# For saving and loading states.
-		self.game_speed = 1.0
-		
+		self.game_speed = 1.0			# This shouldn't be necessary if GameTickPacket.game_info.game_speed wasn't returning 0.0 always.
 		# Snapshots
 		self.snapshots = []
 		self.last_snapshot = 0
 
-		self.active_strategy = Strategy.strategies[0]
-
 		self.time_old = 1
-		self.dt = 1
 		self.last_self = None			# For storing the previous tick packet. Useful for getting deltas.
-		self.game_seconds = 0
 
-		self.yaw_car_to_target = 1
-		self.distance_from_target = 1
-
-		# Throttle
-		self.acceleration = MyVec3(0,0,0)
-		self.throttle_accel = 0
-		
-		# Powersliding
-		self.powersliding = False
-		self.powersliding_since = 0		# Time when we started powersliding. Used to determine if we should drift.
-		self.last_powerslide_ended = 0
-
-		# Car values
-		self.location = MyVec3(0, 0, 0)
-		self.rotation = Rotator()
-		self.velocity = MyVec3(0, 0, 0)
-		
-		self.speed = 0
-		self.boost = 0
-		self.supersonic = False
-		self.wheel_contact = True
 		self.wheel_contact_old = True	# The state of wheel_contact in the previous tick.
 		self.last_wheel_contact = 0		# Last time when wheel_contact has changed.
-		
-		# Other entities
-		#TODO These shouldn't be stored in self, just like how the ball isn't. self==things belonging to the car.
-		self.boost_pads = list()
-		self.boost_locations = list()
-
-		self.opponents = list()
-		self.teammates = list()
-
-		self.boost_pads = []
-		self.boost_locations = []
 
 		# Quick Chat!
 		self.last_quick_chat = 0

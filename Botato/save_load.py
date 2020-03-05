@@ -91,14 +91,13 @@ list_lengths = {	# Dictionary to help determine the length of lists.
 	"teams" : "num_teams"
 }
 
-def read_packet_recursive(obj, structure, data={}, depth=0):
+def read_packet_recursive(obj, structure, data={}):
 	""" Build a dictionary recursively from an object and a dictionary that describes its datastructure. 
 		obj: The python object we are trying to turn into a dictionary.
 		structure: The dictionary that describes the object's structure, or at least the parts that we want to read. The values of this dictionary doesn't matter, only their types.
 		data: The dictionary that will be filled and returned.
 		depth: Keep track of recursion depth, just for debugging.
 		"""
-	indent = "    "*depth
 
 	for key in list(structure.keys()):
 		typ = type(structure[key])
@@ -106,23 +105,16 @@ def read_packet_recursive(obj, structure, data={}, depth=0):
 
 		if typ in (int, float, bool, str):
 			data[key] = value
-			print(indent + '"' + key + '" : ' + str(value) + ',')
 		elif typ == list:
-			print(indent + '"' + key + '" : [')
 			data[key] = []
 			if key in list_lengths:
 				length = getattr(obj, list_lengths[key])
 				for i in range(0, length):
-					print("    "+indent + '{')
-					data[key].append( read_packet_recursive(value[i], structure[key][0], data={}, depth=depth+1) )
-					print("    "+indent + '},')
+					data[key].append( read_packet_recursive(value[i], structure[key][0], data={}) )
 			else:
 				print("List %s must have a variable that defines its length!" %key)
-			print(indent + '],')
 		elif typ == dict:
-			print(indent + '"' + key + '" : {')
-			data[key] = read_packet_recursive(value, structure[key], data={}, depth=depth+1)
-			print(indent + '},')
+			data[key] = read_packet_recursive(value, structure[key], data={})
 		else:
 			print("Variable %s has unsupported type: %s" %(key, type(value)) )
 	return data

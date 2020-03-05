@@ -1,13 +1,7 @@
-# We want to be able to save a scenario to a file, and load scenarios from file as well.
-# I want to be able to turn a game tick packet into a .json.
-
-# This will work similarly to my level editor for my snake game:
-#   When pressing up/down arrow keys, we change the number of the save file we are loading in or saving over.
-#   Just like now, we press / to save and * to load.
-
 import json
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 
+# https://github.com/RLBot/RLBotPythonExample/wiki/Input-and-Output-Data#sample-game-tick-packet
 packet_structure = {
 	'game_cars': [
 		{
@@ -85,7 +79,7 @@ packet_structure = {
 	'num_teams': 2,
 }
 
-list_lengths = {	# Dictionary to help determine the length of lists.
+list_lengths = {	# Dictionary to help find the length of lists.
 	"game_cars" : "num_cars",
 	"game_boosts" : "num_boost",
 	"teams" : "num_teams"
@@ -130,5 +124,5 @@ def save_packet_to_file(packet, filepath):
 	with open(filepath, 'w') as outfile:
 		json.dump(packet_dict, outfile, indent=4)
 
-def dict_to_packet(data):
+def dict_to_packet(data):	# Loading from file WIP...
 	packet = GameTickPacket()

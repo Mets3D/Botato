@@ -1,5 +1,5 @@
 # Python built-ins
-import math, colorsys, random, copy
+import math, colorsys, random, copy, os
 
 from Unreal import Rotator, MyVec3
 from Objects import *
@@ -102,11 +102,12 @@ class Botato(BaseAgent):
 		# Save/Load State
 		if Keyboard.is_key_down("/"):
 			print("Saving game state...")
-			save_load.packet_to_json(self.packet)
+			filepath = os.path.dirname( os.path.abspath(__file__) ) + "Scenarios\\" + "01" + ".json"
+			print(filepath)
+			save_load.save_packet_to_file(self.packet, filepath)
 			self.saved_state = GameState.create_from_gametickpacket(self.packet)
 		if Keyboard.is_key_down("*"):
 			print("Loading game state...")
-			print(save_load.current_json)
 			self.set_game_state(self.saved_state)
 
 		# Change Game Speed

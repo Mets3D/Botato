@@ -6,7 +6,7 @@
 #   Just like now, we press / to save and * to load.
 
 import json
-import pprint
+from rlbot.utils.structures.game_data_struct import GameTickPacket
 
 packet_structure = {
 	'game_cars': [
@@ -96,7 +96,6 @@ def read_packet_recursive(obj, structure, data={}):
 		obj: The python object we are trying to turn into a dictionary.
 		structure: The dictionary that describes the object's structure, or at least the parts that we want to read. The values of this dictionary doesn't matter, only their types.
 		data: The dictionary that will be filled and returned.
-		depth: Keep track of recursion depth, just for debugging.
 		"""
 
 	for key in list(structure.keys()):
@@ -119,11 +118,17 @@ def read_packet_recursive(obj, structure, data={}):
 			print("Variable %s has unsupported type: %s" %(key, type(value)) )
 	return data
 
-def packet_to_json(packet):
-	packet_dict = {}
-	
-	current_json = json.dumps(dir(packet), indent=4)
-	valid_keys = [key for key in dir(packet) if not key.startswith("_")]
+def packet_to_dict(packet):
+	return read_packet_recursive(packet, packet_structure)
 
-	packet_dict = read_packet_recursive(packet, packet_structure)
-	print(json.dumps(packet_dict, indent=4))
+def packet_to_json(packet):
+	return json.dumps(packet_to_dict(packet), indent=4)
+
+def save_packet_to_file(packet, filepath):
+	filepath = "D:\\rlbot\\Botato\\Botato\\Scenarios\\01.json"
+	packet_dict = packet_to_dict(packet)
+	with open(filepath, 'w') as outfile:
+		json.dump(packet_dict, outfile, indent=4)
+
+def dict_to_packet(data):
+	packet = GameTickPacket()

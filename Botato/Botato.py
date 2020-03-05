@@ -9,6 +9,7 @@ import Strategy
 import Debug
 import Preprocess
 import keyboard_input as Keyboard
+import save_load
 
 # RLBot
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
@@ -83,6 +84,7 @@ class Botato(BaseAgent):
 
 		Keyboard.add_reaction("left", go_back_snapshot)
 		
+
 		# Load Training scenarios
 		if Keyboard.is_key_down("[0]"):
 			self.training = Training(self, "Diagonal Kickoff")
@@ -100,9 +102,11 @@ class Botato(BaseAgent):
 		# Save/Load State
 		if Keyboard.is_key_down("/"):
 			print("Saving game state...")
+			save_load.packet_to_json(self.packet)
 			self.saved_state = GameState.create_from_gametickpacket(self.packet)
 		if Keyboard.is_key_down("*"):
 			print("Loading game state...")
+			print(save_load.current_json)
 			self.set_game_state(self.saved_state)
 
 		# Change Game Speed
@@ -127,7 +131,7 @@ class Botato(BaseAgent):
 
 	def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
 			if not packet.game_info.is_round_active:
-				return self.controller	# Don't calculate anything during replays.
+				return SimpleControllerState()	# Don't calculate anything during replays.
 
 			Preprocess.preprocess(self, packet)		# Cleaning up values
 

@@ -119,9 +119,8 @@ def packet_to_json(packet):
 	return json.dumps(packet_to_dict(packet), indent=4)
 
 def save_packet_to_file(packet, filepath):
-	filepath = "D:\\rlbot\\Botato\\Botato\\Scenarios\\01.json"
 	packet_dict = packet_to_dict(packet)
-	with open(filepath, 'w') as outfile:
+	with open(filepath, 'w+') as outfile:
 		json.dump(packet_dict, outfile, indent=4)
 
 def dict_to_packet(data):	# Loading from file WIP...

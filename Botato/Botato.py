@@ -102,7 +102,7 @@ class Botato(BaseAgent):
 		# Save/Load State
 		if Keyboard.is_key_down("/"):
 			print("Saving game state...")
-			filepath = os.path.dirname( os.path.abspath(__file__) ) + "Scenarios\\" + "01" + ".json"
+			filepath = os.path.dirname( os.path.abspath(__file__) ) + "\\Scenarios\\" + "01" + ".json"
 			print(filepath)
 			save_load.save_packet_to_file(self.packet, filepath)
 			self.saved_state = GameState.create_from_gametickpacket(self.packet)

@@ -81,34 +81,37 @@ class Botato(BaseAgent):
 				print("Loading snapshot from time: %f" %snapshot[1])
 				self.set_game_state(snapshot[0])
 				self.last_snapshot = self.game_seconds
-
-		Keyboard.add_reaction("left", go_back_snapshot)
 		
+		if Keyboard.was_key_pressed("left"):
+			go_back_snapshot()
 
 		# Load Training scenarios
-		if Keyboard.is_key_down("[0]"):
+		if Keyboard.was_key_pressed("[0]"):
 			self.training = Training(self, "Diagonal Kickoff")
-		elif Keyboard.is_key_down("[1]"):
+		elif Keyboard.was_key_pressed("[1]"):
 			self.training = Training(self, "Straight Kickoff")
-		elif Keyboard.is_key_down("[2]"):
+		elif Keyboard.was_key_pressed("[2]"):
 			self.training = Training(self, "Prediction 1")
-		elif Keyboard.is_key_down("[3]"):
+		elif Keyboard.was_key_pressed("[3]"):
 			self.training = Training(self, "Random Ball Impulse")
 		# Reset current training, without changing randomization.
-		if Keyboard.is_key_down("r"):
+		if Keyboard.was_key_pressed("r"):
 			if self.training:
 				self.training.reset()
 
 		# Save/Load State
-		if Keyboard.is_key_down("/"):
+		if Keyboard.was_key_pressed("/"):
 			print("Saving game state...")
 			filepath = os.path.dirname( os.path.abspath(__file__) ) + "\\Scenarios\\" + "01" + ".json"
-			print(filepath)
 			save_load.save_packet_to_file(self.packet, filepath)
 			self.saved_state = GameState.create_from_gametickpacket(self.packet)
-		if Keyboard.is_key_down("*"):
-			print("Loading game state...")
-			self.set_game_state(self.saved_state)
+		if Keyboard.was_key_pressed("*"):
+			filepath = os.path.dirname( os.path.abspath(__file__) ) + "\\Scenarios\\" + "01" + ".json"
+			
+			packet_from_file = save_load.load_packet_from_file(self.packet, filepath)
+			game_state_from_file = GameState.create_from_gametickpacket(packet_from_file)
+
+			self.set_game_state(game_state_from_file)
 
 		# Change Game Speed
 		if Keyboard.is_key_down("-"):
@@ -123,6 +126,8 @@ class Botato(BaseAgent):
 			game_state = GameState(game_info=game_info_state)
 			self.set_game_state(game_state)
 			print("Speeding to %f" %self.game_speed)
+		
+		Keyboard.wipe_buttons_pressed()
 
 	def send_quick_chats(self, chat_mode, chat_code, count=1, timer=1):
 		if self.last_quick_chat + timer < self.game_seconds:
@@ -166,6 +171,7 @@ class Botato(BaseAgent):
 			Debug.render_all(self)
 			self.renderer.end_rendering()
 
+			self.controller = SimpleControllerState()
 			self.keyboard_input()
 
 			# Save a (shallow!!! Vectors aren't saved, just floats!) copy of self, to use in next tick.

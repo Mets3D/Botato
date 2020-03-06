@@ -1,6 +1,7 @@
 import json
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 
+
 # https://github.com/RLBot/RLBotPythonExample/wiki/Input-and-Output-Data#sample-game-tick-packet
 packet_structure = {
 	'game_cars': [
@@ -123,5 +124,27 @@ def save_packet_to_file(packet, filepath):
 	with open(filepath, 'w+') as outfile:
 		json.dump(packet_dict, outfile, indent=4)
 
-def dict_to_packet(data):	# Loading from file WIP...
-	packet = GameTickPacket()
+def load_packet_from_file(packet, filepath):
+	with open(filepath) as json_file:
+		data = json.load(json_file)
+		dict_to_packet_recursive(packet, data)
+	return packet
+
+def dict_to_packet_recursive(obj, data) -> None:
+	"""Recursively fill up the passed packet's fields with data from a dictionary. No need to return the packet, as the passed object is modified."""
+	typ = type(data)
+	
+	if typ == dict:
+		for key in list(data.keys()):
+			value_type = type(data[key])
+			if value_type in (dict, list):
+				dict_to_packet_recursive(getattr(obj, key), data[key])
+			else:
+				setattr(obj, key, data[key])
+	elif typ == list:
+		for i, e in enumerate(data):
+			value_type = type(e)
+			if value_type in (dict, list):
+				dict_to_packet_recursive(obj[i], data[i])
+			else:
+				obj[i] = data[i]

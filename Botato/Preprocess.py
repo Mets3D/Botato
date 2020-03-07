@@ -29,9 +29,11 @@ def preprocess(self, packet: GameTickPacket):
 	if(self.team==0):
 		self.enemy_goal = orange_goal
 		self.own_goal = blue_goal
+		self.sign = 1
 	else:
 		self.enemy_goal = blue_goal
 		self.own_goal = orange_goal
+		self.sign = -1
 	
 	# Car Transforms
 	self.car = packet.game_cars[self.index]

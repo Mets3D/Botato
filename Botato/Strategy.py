@@ -106,13 +106,15 @@ class Strat_Retreat(Strategy):
 
 class Strat_HitBallTowardsTarget(Strategy):
 	name = "Hit Ball Towards Target"
+	ball_target = MyVec3(0, 0, 0)		# Where we want to hit the ball towards.
+
 	# TODO:
+	#	Make this not abysmal when Botato is to the side between the ball and the target (he will keep near-missing the ball)
 	# 	Create tests for this.
 	# 	Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
 	# 	Could also aim at the opposite corner of the net rather than the center.
 	#	Tweak the maths on desired_distance_from_ball.
 	#	parameterize the target so it doesn't have to be the middle of the enemy goal.
-	#	Make this not abysmal when Botato is to the side between the ball and the target (he will keep near-missing the ball)
 	#	Make sure Botato doesn't yeet up to the ceiling.
 
 	@classmethod
@@ -133,23 +135,39 @@ class Strat_HitBallTowardsTarget(Strategy):
 		if not ball:
 			return	# If there's no hittable ball, any strategy that relies on hitting a ball should evaluate to a hard 0, so that this doesn't happen.
 
+		cls.ball_target = MyVec3(car.enemy_goal.location)
+		# If we are facing away from the goal, shift the ball target towards the direction we are facing. This is to avoid overshooting to the sides.
+		car_angle_to_goal = angle_to(car, cls.ball_target)
+		Debug.text_2d(500, 500, str(car_angle_to_goal))
+		# We want to linear interpolate from -90 to 90 degrees, as -892 to 892 on goal X.
+		offset = car_angle_to_goal/130 * 892
+		cls.ball_target.x += offset
+		Debug.rect_2d_3d(cls.ball_target, color=car.renderer.yellow())
+
 		car_ball_dist = distance(car, ball)
-		goal_ball_dist = distance(car.enemy_goal, ball)
-		car_enemy_goal_dist = distance(car, car.enemy_goal)
 		# We project a line from the target towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
 		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the target) the ball.
 		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
-		goal_ball_vec = car.enemy_goal.location - ball
-		ball_dist_ratio = car_ball_dist/goal_ball_dist
+		target_to_ball_vec = cls.ball_target - ball.location
 		desired_distance_from_ball = car_ball_dist/2
 		
-		car.location - car.enemy_goal.location
-		
-		cls.target = ball - (goal_ball_vec.normalized * desired_distance_from_ball)
+		cls.target = ball - (target_to_ball_vec.normalized * desired_distance_from_ball)
+
+		# Move the target closer to Botato on only the Y axis
+		cls.target.y -= car.sign * car_ball_dist/3
+
 		cls.target[2]=17
 		cls.target = raycast(cls.target, ball)
 
 		return cls.target
+	
+	@classmethod
+	def control_car(cls, car):
+		""" Set the car's inputs using Maneuvers. """
+		speed_on_ground = M_Speed_On_Ground.get_output(car, cls.target, desired_speed=2300)
+		car.controller = speed_on_ground
+		car.controller.jump = False
+		# We should only dodge when close to the ball.
 
 class Strat_TouchPredictedBall(Strategy):
 	name = "Touch Predicted Ball"
@@ -165,6 +183,7 @@ class Strat_TouchPredictedBall(Strategy):
 			# TODO: If there is no soon reachable ball, this should not be the active strategy!
 			return
 		predicted_ball = soonest_reachable[0]
+		Debug.rect_2d_3d(predicted_ball.physics.location, color=car.renderer.green())
 		dt = soonest_reachable[1]	# Time until the ball becomes reachable.
 		dist = distance(car.location, predicted_ball.physics.location)
 		

@@ -10,7 +10,7 @@ local_ratio = 40				# Divide local coords by this number, in order to fit them o
 debug_strats 		= True
 debug_controls 		= False
 debug_dodge 		= False
-debug_prediction 	= False
+debug_prediction 	= True
 debug_car			= False
 debug_ball			= False
 debug_target 		= True
@@ -107,7 +107,7 @@ def line_2d_local(global_coords1, global_coords2=car.location, color=None, offse
 
 	line_2d_from_center( x1, y1, x2, y2, ensure_color(color), offset )
 
-def rect_2d_3d(global_coords, scale=10, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
+def rect_2d_3d(global_coords, scale=10, color=None, draw_2d=False, draw_3d=True, offset=(0, 0)):
 	"""Draw a rectangle in 3D(global) and 2D(local) space.
 	Level 3 function, could be called by Botato when a Level 4 function is too specific to use."""
 	r = car.renderer
@@ -118,7 +118,7 @@ def rect_2d_3d(global_coords, scale=10, color=None, draw_2d=True, draw_3d=True, 
 	if(draw_2d):
 		rect_2d_local(global_coords, scale, scale, color, offset)
 
-def line_2d_3d(global_coords1, global_coords2=None, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
+def line_2d_3d(global_coords1, global_coords2=None, color=None, draw_2d=False, draw_3d=True, offset=(0, 0)):
 	"""Draw a line in 3D(global) and 2D (local) space.
 	Level 3 function."""
 	color = ensure_color(color)
@@ -128,7 +128,7 @@ def line_2d_3d(global_coords1, global_coords2=None, color=None, draw_2d=True, dr
 	if(draw_2d):
 		line_2d_local(global_coords1, global_coords2, color, offset)
 
-def vector_2d_3d(global_coords1, global_coords2=None, scale=10, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
+def vector_2d_3d(global_coords1, global_coords2=None, scale=10, color=None, draw_2d=False, draw_3d=True, offset=(0, 0)):
 	"""Draw a line between global_coords1 and global_coords2 in 3D space.
 	Then draw a rectangle in 3D space at global_coords1.
 	Then draw the same line in the car's local coordinates, onto 2D (screen) space.
@@ -160,7 +160,7 @@ def render_all():
 			target = car.active_strategy.target
 			
 			# Car Velocity Vector
-			vector_2d_3d(car.location + car.velocity, car.location, color=car.renderer.blue(), draw_2d=True, offset=offset)
+			vector_2d_3d(car.location + car.velocity, car.location, color=car.renderer.blue(), draw_2d=False, offset=offset)
 
 			# Target Location Vector
 			vector_2d_3d(target, color=car.renderer.white(), draw_2d=False, draw_3d=True, offset=offset)

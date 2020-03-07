@@ -24,10 +24,6 @@ from rlbot.utils.game_state_util import GameState, GameInfoState
 # Need to figure out how I can find time to bump and boost - which are things that I don't want to belong to a single strategy - every strategy should be doing these two things when the situation allows for it. Also, avoiding incoming demos.
 
 class Botato(BaseAgent):
-	def initialize_keyboard(self):
-		Keyboard.start()
-		Keyboard.make_toggle('x')
-
 	def initialize_agent(self):
 		super().initialize_agent()
 		
@@ -54,6 +50,11 @@ class Botato(BaseAgent):
 		# Quick Chat!
 		self.last_quick_chat = 0
 	
+	def initialize_keyboard(self):
+		Keyboard.start()
+		Keyboard.make_toggle('x')
+		Keyboard.make_toggle('b')
+	
 	def keyboard_input(self):
 		# Controls
 			# x: Toggle taking control of Botato.
@@ -62,6 +63,22 @@ class Botato(BaseAgent):
 			# Numpad *: Load saved state
 			# Numpad +/-: Speed/Slow game
 			# Numpad 0-9 to load trainings.
+
+			
+		# Take control of the ball
+		if Keyboard.toggles['b']:
+			game_state = GameState.create_from_gametickpacket(self.packet)
+			# ball_state = game_state.ball_state
+
+			ball_vel = game_state.ball.physics.velocity
+			ball_vel.y += Keyboard.is_key_down("t") * 10
+			ball_vel.y -= Keyboard.is_key_down("g") * 10
+			ball_vel.x += Keyboard.is_key_down("f") * 10
+			ball_vel.x -= Keyboard.is_key_down("h") * 10
+			ball_state = BallState(Physics(velocity=copy.copy(ball_vel)))
+
+			game_state = GameState(ball=ball_state)
+			self.set_game_state(game_state)
 
 		# Take control of Botato
 		if Keyboard.toggles['x']:

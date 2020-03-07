@@ -14,7 +14,7 @@ def will_intersect(car):
 	car_loc = car.location
 	prev_car_loc = MyVec3(car_loc)
 	dt = 1/60
-	vel = car.velocity
+	vel = car.velocity.size
 	collision_threshold = 175
 
 	# Draw a line in the direction we're moving
@@ -23,11 +23,13 @@ def will_intersect(car):
 	throttle_accel = get_throttle_accel(car.velocity.size)
 	total_accel = throttle_accel + ACCEL_BOOST * (car.boost > 0)
 
-	Debug.rect_2d_3d(car_loc, scale=100, color=car.renderer.red(), draw_2d=False)
+	direction = car.velocity.normalized
+	
 	for ps in car.ball_prediction.slices:
 		ball_loc = MyVec3(ps.physics.location)
-		car_loc += vel * dt
-		vel += total_accel
+		car_loc += direction * vel * dt
+		# Debug.rect_2d_3d(car_loc, scale=10, color=car.renderer.red(), draw_2d=False)
+		vel += total_accel * dt
 		if distance(car_loc, ball_loc) < collision_threshold:
 			# If we are likely to hit the ball, draw the line red.
 			# car.renderer.draw_line_3d(prev_car_loc, car_loc, car.renderer.red())

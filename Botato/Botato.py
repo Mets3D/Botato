@@ -196,8 +196,17 @@ class Botato(BaseAgent):
 			for i in range(0, 30):
 				prediction_slice = self.ball_prediction.slices[i]
 				loc = prediction_slice.physics.location
-				if(abs(loc.y) > 5050):
-					self.training = Training(self, "Random Ball Impulse")
+				if(abs(loc.y) > 5500):
+					ball_vel = GameState.create_from_gametickpacket(self.packet).ball.physics.velocity
+					ball_vel.y *= -500
+					ball_state = BallState(
+						Physics(
+							velocity = ball_vel,
+						)
+					)
+
+					game_state = GameState(ball=ball_state)
+					self.set_game_state(game_state)
 
 			# Choosing Strategy
 			for s in Strategy.strategies:

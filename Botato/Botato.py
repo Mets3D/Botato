@@ -17,11 +17,19 @@ from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 from rlbot.utils.game_state_util import GameState, GameInfoState
 
-# NEXT UP: 
-# Improve Strat_HitBallTowardsTarget.
-# Improve and implement more maneuvers as needed (we are probably over-eager on dodging).
-# Work on maths and improve self-simulation, prediction, therefore improving things like will_intersect(), reachable(), soonest_reachable(), etc.
-# Need to figure out how I can find time to bump and boost - which are things that I don't want to belong to a single strategy - every strategy should be doing these two things when the situation allows for it. Also, avoiding incoming demos.
+# TODO, in order of what I think will have the most impact on Botato's performance:
+# Ability to get out of the goalpost
+# Ability to dodge into the ball
+# Kickoff strategies
+# Ability to get off the wall
+# Improvements to strategies in cases where Car-Ball-Goal is a tight angle, but the ball is close to the wall (this routinely results in Botato powersliding on the ramp/wall, and ends in disaster)
+# Improvements to determining soonest reachable ball (via better self-simulation)
+# Ability to re-orient and land on the floor
+# Ability to pick up boost pads on purpose. (First implement this for Retreat, then other things - I think it should be a call towards the end of find_target() that moves the target to a nearby poost pad if it's easy enough to reach and we need it desparately enough )
+# New strategies:
+	# Save: When the ball is predicted to land in our net, try to hit it away from our net.
+	# Clear: When the ball is in our corner, just hit it towards the corner or the wall, don't bother trying to hit it towards the enemy goal.
+	# Challenge
 
 class Botato(BaseAgent):
 	def initialize_agent(self):

@@ -10,7 +10,7 @@ local_ratio = 40				# Divide local coords by this number, in order to fit them o
 debug_strats 		= True
 debug_controls 		= False
 debug_dodge 		= False
-debug_prediction 	= True
+debug_prediction 	= False
 debug_car			= False
 debug_ball			= False
 debug_target 		= True
@@ -34,6 +34,8 @@ def ensure_color(color=None):
 	"""Helper function to get a default color if no color was specified to a render function."""
 	if(color==None):
 		return car.renderer.white()
+	elif(type(color)==str and color in ["black", "white", "gray", "blue", "red", "green", "lime", "yellow", "orange", "cyan", "pink", "purple", "teal"]):
+		return getattr(car.renderer, color)()
 	else:
 		return color
 

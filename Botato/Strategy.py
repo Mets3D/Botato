@@ -63,6 +63,7 @@ class Strat_Retreat(Strategy):
 			car.send_quick_chats(QuickChats.CHAT_EVERYONE, QuickChats.Apologies_Whoops)
 
 		if need_to_avoid_ball:
+			Debug.text_2d(25, 500, "NEED TO AVOID BALL!", color="red")
 			
 			# Move the target behind where the ball is moving
 			avoidance_direction = ball.velocity.normalized	# TEST: this needs to be tested!
@@ -138,7 +139,7 @@ class Strat_HitBallTowardsTarget(Strategy):
 		# We want to linear interpolate from -90 to 90 degrees, as -892 to 892 on goal X.
 		offset = car_angle_to_goal/130 * 600	# This is a good start, but as usual, we probably need to use more factors than just the car's angle.
 		cls.ball_target.x += offset
-		Debug.rect_2d_3d(cls.ball_target, color=car.renderer.yellow())
+		Debug.rect_2d_3d(cls.ball_target, color="yellow")
 
 		####### Determine target ########
 		#################################
@@ -146,32 +147,45 @@ class Strat_HitBallTowardsTarget(Strategy):
 		# Find a point along this line that we want Botato to move towards.
 		# The goal is to tweak the distance of this point along this line from the ball to get good hits in as many scenarios as possible.
 		car_ball_dist = distance(car, ball)
-		desired_distance_from_ball = car_ball_dist/2
+		desired_distance_from_ball = car_ball_dist/3
 
 		# Increase the desired distance from ball if the Car-Ball-Goal angle is tight (90 is tight, 180 is not tight)
 		car_ball_goal_angle = get_angles_of_triangle(car.location, ball.location, cls.ball_target)[1]
+		Debug.text_2d(25, 330, "Car-Ball-Goal angle: " + str(round(car_ball_goal_angle, 2)))
 		angle_tightness = (180 - car_ball_goal_angle) / 45
-		# desired_distance_from_ball *= angle_tightness
-		
+		# desired_distance_from_ball *= angle_tightness*1.5
+		desired_distance_min = 0
+		desired_distance_max = 3000
+		if angle_tightness > 1:
+			# If the angle is really quite tight, clamp the desired distance to a minimum of 1500.
+			Debug.text_2d(25, 500, "TIGHT ANGLE, NEED SPACE!", color="red")
+			desired_distance_min = 1500
+
+		desired_distance_from_ball = clamp(desired_distance_from_ball, desired_distance_min, desired_distance_max)
+
 		target_to_ball_vec = cls.ball_target - ball.location
+		# Initially determine the target by projecting a line from the ball target towards the ball, and overshooting it by the desired distance.
 		cls.target = ball - (target_to_ball_vec.normalized * desired_distance_from_ball)
 
 		# If Botato's angle to the ball is super wide, move the target closer to the car on the Y axis. 
 		# car_angle_to_ball = angle_to(car, ball)
 		# cls.target.y += car.sign * abs(car_angle_to_ball)/90 * 500
 
-		# If Botato's angle to the ball is tight, move the target closer to the car.
-		car_to_target = car.location - cls.target
-		Debug.line_2d_3d(cls.target, cls.target + car.sign * car_to_target)
-		# cls.target += car.sign * car_to_target/3
+		if angle_tightness > 1:
+			# If the angle is tight, move the target closer to the car. TODO: This was done in hopes of making Botato powerslide sooner, but it doesn't really work. I wonder if we could have a target_orientation so Botato knows he will have to arrive at the target at a certain orientation, and he could powerslide to achieve that.
+			car_to_target = car.location - cls.target
+			pushed_target = cls.target + car_to_target/1.2
+			Debug.line_2d_3d(cls.target, pushed_target, color="lime")
+			cls.target = pushed_target
+		else:
+			# Move the target closer to Botato on only the Y axis
+			cls.target.y -= car.sign * car_ball_dist/3
+
 
 		# Move the target closer to Botato
-		car_to_target_vec = car.location - cls.target
+		# car_to_target_vec = car.location - cls.target
 		# cls.target += car.sign * car_to_target_vec/3
-
-		# Move the target closer to Botato on only the Y axis
-		cls.target.y -= car.sign * car_ball_dist/3
-
+		
 		# Force the target to be on the ground.
 		cls.target[2]=17
 		# Force the target to be inside the pitch.

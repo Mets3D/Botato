@@ -9,6 +9,32 @@ ACCEL_BRAKE = -3500
 ACCEL_COAST = -525
 ACCEL_GRAV = 650
 
+def get_angles_of_triangle(a, b, c):
+	""" Find the angles between three points """
+	RAD_TO_DEG = 180/math.pi
+	
+	alpha = b-a
+	beta = c-a
+	cos_alpha = alpha.dot(beta) / (alpha.size * beta.size)
+	angle1 = math.acos(cos_alpha) * RAD_TO_DEG
+	
+	alpha = a-b
+	beta = c-b
+	cos_alpha = alpha.dot(beta) / (alpha.size * beta.size)
+	angle2 = math.acos(cos_alpha) * RAD_TO_DEG
+	
+	angle3 = 180 - angle2 - angle1
+
+	# Debug.text_2d(25, 400, "Angle 1: " + str(round(angle1, 2)))
+	# Debug.text_2d(25, 430, "Angle 2: " + str(round(angle2, 2)))
+	# Debug.text_2d(25, 460, "Angle 3: " + str(round(angle3, 2)))
+
+	# Debug.line_2d_3d(a, b)
+	# Debug.line_2d_3d(b, c)
+	# Debug.line_2d_3d(c, a)
+
+	return [angle1, angle2, angle3]
+
 def between(x, val1, val2):
 	"""Find whether x is between val1 and val2."""
 	return max(val1, val2) > x > min(val1, val2)

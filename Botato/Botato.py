@@ -100,7 +100,7 @@ class Botato(BaseAgent):
 
 		### Choose and load scenario
 		# Check which numpad keys were pressed this tick
-
+		# hellooo
 		numpad_keys = ["[0]", "[1]", "[2]", "[3]", "[4]", "[5]", "[6]", "[7]", "[8]", "[9]"]
 		numpad_keys_pressed = {key:Keyboard.was_key_pressed(key) for key in numpad_keys}
 		for key_name in list(numpad_keys_pressed.keys()):

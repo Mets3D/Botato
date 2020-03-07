@@ -8,6 +8,17 @@ from Training import *
 from Debug import DebugUtils
 from Maneuver import *
 
+# Idea: It might be worthwhile to make Strategy.target a list instead of a single vector. We would still mostly use targets[-1], but we would have the option to also use targets[-2] if we wanted to, to affect our maneuvering!
+
+def get_out_of_goal(car, target):
+	goal_sign = sign(car.location.y)
+	ret = MyVec3(target)
+	if abs(car.location.y) > 5200:
+		ret.x = clamp(target.x, -800, 800)
+		ret.y = 5000 * goal_sign
+		ret.z = 17
+	return ret
+
 class Strategy(DebugUtils):
 	""" Base Class for Strategies. """
 	
@@ -185,6 +196,9 @@ class Strat_HitBallTowardsTarget(Strategy):
 		# Move the target closer to Botato
 		# car_to_target_vec = car.location - cls.target
 		# cls.target += car.sign * car_to_target_vec/3
+
+		# If we are inside the goalpost, move the target in front of the goal line
+		cls.target = get_out_of_goal(car, cls.target)
 		
 		# Force the target to be on the ground.
 		cls.target[2]=17

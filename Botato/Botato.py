@@ -18,7 +18,6 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket
 from rlbot.utils.game_state_util import GameState, GameInfoState
 
 # TODO, in order of what I think will have the most impact on Botato's performance:
-# Ability to get out of the goalpost
 # Ability to dodge into the ball
 # Kickoff strategies
 # Ability to get off the wall

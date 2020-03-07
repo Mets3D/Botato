@@ -6,16 +6,15 @@ from rlbot.utils.structures.game_data_struct import Vector3 as gds_Vec3
 from rlbot.utils.game_state_util import Vector3 as gsu_Vec3
 from rlbot.utils.game_state_util import Rotator as gsu_rot
 
-class MyVec3(list):
+from RLUtilities.LinearAlgebra import vec3
+
+class MyVec3(vec3):
 	def __init__(self, x=0.0, y=0.0, z=0.0):
-		self.append(0)
-		self.append(0)
-		self.append(0)
 		if isinstance(x, (gds_Vec3, gsu_Vec3)):
 			self[0] = x.x
 			self[1] = x.y
 			self[2] = x.z
-		elif isinstance(x, (list, tuple)):
+		elif isinstance(x, (list, tuple, vec3)):
 			self[0] = x[0]
 			self[1] = x[1]
 			self[2] = x[2]

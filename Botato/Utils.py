@@ -133,12 +133,9 @@ def raycast(loc1, loc2, debug=True) -> MyVec3:
 	"""Casts a ray from loc1 to loc2. Returns the location of where the line intersected the Pitch. Returns loc1 if didn't intersect."""
 	# TODO: the default behaviour of raycasting from a start position towards a vector(rather than from A to B) will be useful too, maybe add a flag param to switch to that behavior.
 
-	if sys.platform != 'Windows':	# RLUtilities is only on Windows...
-		return loc1
-
 	from RLUtilities.Simulation import Pitch, ray
-	loc1 = MyVec3(loc1[:])
-	loc2 = MyVec3(loc2[:])
+	loc1 = MyVec3(loc1)
+	loc2 = MyVec3(loc2)
 	difference = loc2 - loc1
 	
 	my_ray = ray(loc1, difference)
@@ -151,7 +148,7 @@ def raycast(loc1, loc2, debug=True) -> MyVec3:
 		# If the raycast didn't intersect with anything, return the target location.
 		return loc1
 
-	return MyVec3(my_raycast.start[:])
+	return MyVec3(my_raycast.start)
 
 def accel_distance(initial_speed, target_speed, boost, speed_error=1) -> list:
 	""" Measure how much time and distance it will require to go from initial_speed to target_speed, while moving in a straight line, with a given boost. """

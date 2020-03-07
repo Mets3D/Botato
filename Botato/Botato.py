@@ -85,22 +85,22 @@ class Botato(BaseAgent):
 				self.last_snapshot = self.game_seconds
 
 		# Load Hard Coded Training scenarios
-		# if Keyboard.was_key_pressed("[0]"):
-		# 	self.training = Training(self, "Diagonal Kickoff")
-		# elif Keyboard.was_key_pressed("[1]"):
-		# 	self.training = Training(self, "Straight Kickoff")
-		# elif Keyboard.was_key_pressed("[2]"):
-		# 	self.training = Training(self, "Prediction 1")
-		# elif Keyboard.was_key_pressed("[3]"):
-		# 	self.training = Training(self, "Random Ball Impulse")
+		if Keyboard.was_key_pressed("0"):
+			self.training = Training(self, "Diagonal Kickoff")
+		elif Keyboard.was_key_pressed("1"):
+			self.training = Training(self, "Straight Kickoff")
+		elif Keyboard.was_key_pressed("2"):
+			self.training = Training(self, "Prediction 1")
+		elif Keyboard.was_key_pressed("3"):
+			self.training = Training(self, "Random Ball Impulse")
 		# Reset current training, without changing randomization.
-		# if Keyboard.was_key_pressed("r"):
-		# 	if self.training:
-		# 		self.training.reset()
+		if Keyboard.was_key_pressed("r"):
+			if self.training:
+				self.training.reset()
 
 		### Choose and load scenario
 		# Check which numpad keys were pressed this tick
-		# hellooo
+
 		numpad_keys = ["[0]", "[1]", "[2]", "[3]", "[4]", "[5]", "[6]", "[7]", "[8]", "[9]"]
 		numpad_keys_pressed = {key:Keyboard.was_key_pressed(key) for key in numpad_keys}
 		for key_name in list(numpad_keys_pressed.keys()):
@@ -137,14 +137,14 @@ class Botato(BaseAgent):
 			self.set_game_state(game_state_from_file)
 
 		# Change Game Speed
-		if Keyboard.is_key_down("-"):
-			self.game_speed = max(self.game_speed-0.05, 0.05)
+		if Keyboard.was_key_pressed("-"):
+			self.game_speed = max(self.game_speed-0.2, 0.2)
 			game_info_state = GameInfoState(game_speed=self.game_speed)
 			game_state = GameState(game_info=game_info_state)
 			self.set_game_state(game_state)
 			print("Slowing to %f" %self.game_speed)
-		if Keyboard.is_key_down("+"):
-			self.game_speed += 0.05
+		if Keyboard.was_key_pressed("+"):
+			self.game_speed += 0.2
 			game_info_state = GameInfoState(game_speed=self.game_speed)
 			game_state = GameState(game_info=game_info_state)
 			self.set_game_state(game_state)
@@ -194,7 +194,6 @@ class Botato(BaseAgent):
 			Debug.render_all(self)
 			self.renderer.end_rendering()
 
-			self.controller = SimpleControllerState()
 			self.keyboard_input()
 
 			# Save a (shallow!!! Vectors aren't saved, just floats!) copy of self, to use in next tick.

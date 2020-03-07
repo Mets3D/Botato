@@ -157,8 +157,7 @@ class Strat_HitBallTowardsTarget(Strategy):
 		
 		cls.target = ball - (goal_ball_vec.normalized * desired_distance_from_ball)
 		cls.target[2]=17
-		target_obj = GameObject()
-		target_obj.location = raycast(cls.target, ball)
+		cls.target = raycast(cls.target, ball)
 
 		return cls.target
 

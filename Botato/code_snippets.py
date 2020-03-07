@@ -159,18 +159,18 @@ def turn_radius(speed):
 		top_right = 	MyVec3( field.x, -field.y, 0) / local_ratio
 		
 		"""Local coords, don't do this :'D"""
-		# line_2d_local(car, bottom_left, bottom_right, color)
-		# line_2d_local(car, bottom_right, top_right, color)
-		# line_2d_local(car, top_right, top_left, color)
-		# line_2d_local(car, top_left, bottom_left, color)
+		# line_2d_local(bottom_left, bottom_right, color)
+		# line_2d_local(bottom_right, top_right, color)
+		# line_2d_local(top_right, top_left, color)
+		# line_2d_local(top_left, bottom_left, color)
 		
 		"""Global coords with a backdrop, just as useless :)"""
-		# rect_2d_from_center(car, 0, 0, width=int(field.x/local_ratio*2), height=int(field.y/local_ratio*2), color=r.gray())
+		# rect_2d_from_center(0, 0, width=int(field.x/local_ratio*2), height=int(field.y/local_ratio*2), color=r.gray())
 		
-		# line_2d_from_center(car, bottom_left.x, 	bottom_left.y, 	bottom_right.x, bottom_right.y, color)
-		# line_2d_from_center(car, bottom_right.x, 	bottom_right.y, top_right.x, 	top_right.y, 	color)
-		# line_2d_from_center(car, top_right.x, 		top_right.y, 	top_left.x, 	top_left.y, 	color)
-		# line_2d_from_center(car, top_left.x, 		top_left.y, 	bottom_left.x, 	bottom_left.y, 	color)
+		# line_2d_from_center(bottom_left.x, 	bottom_left.y, 	bottom_right.x, bottom_right.y, color)
+		# line_2d_from_center(bottom_right.x, 	bottom_right.y, top_right.x, 	top_right.y, 	color)
+		# line_2d_from_center(top_right.x, 		top_right.y, 	top_left.x, 	top_left.y, 	color)
+		# line_2d_from_center(top_left.x, 		top_left.y, 	bottom_left.x, 	bottom_left.y, 	color)
 
 """Old shitty powerslides"""
 	class Powerslide1(Maneuver):

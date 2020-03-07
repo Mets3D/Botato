@@ -5,17 +5,10 @@ from Unreal import Rotator, MyVec3
 from Objects import *
 from Utils import *
 from Training import *
-import Debug
+from Debug import DebugUtils
 from Maneuver import *
-import Preprocess
-# from keyboard_input import keyboard
 
-# RLBot
-from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
-from rlbot.utils.structures.game_data_struct import GameTickPacket
-from rlbot.utils.game_state_util import GameState, GameInfoState
-
-class Strategy:
+class Strategy(DebugUtils):
 	""" Base Class for Strategies. """
 	
 	# Class Variables
@@ -26,7 +19,8 @@ class Strategy:
 
 	@classmethod
 	def evaluate(cls, car):
-		"""Return how good this strategy seems to be right now, 0-1. Tweaking these values can be quite tricky."""
+		"""Return how good this strategy seems to be right now. This can be any number, its absolute value doesn't matter, 
+		only how it relates to the evaluation of other strategies. Tweaking these values can be quite tricky."""
 		cls.viability = 0
 		return cls.viability
 	
@@ -45,6 +39,7 @@ class Strat_Retreat(Strategy):
 	name = "Defense"
 	target_before_jump = None
 	dont_dodge = False
+	debug=True
 
 	@classmethod
 	def evaluate(cls, car):
@@ -82,14 +77,14 @@ class Strat_Retreat(Strategy):
 				# If the ball is barely moving, avoid it on the side of the ball that we're more angled towards
 				avoidance_direction = MyVec3(sign(angle_to_ball), 0, 0).normalized
 				# TODO: This can still be improved a fair bit, by preferring avoiding the ball on goal side or boost side depending on the situation.
-				print("Picking by angle")
+				cls.debugprint("Picking by angle")
 				if abs(angle_to_ball) < 2:
 					# If we are facing right at the ball, avoid it on the side we're closer to on the X axis.
 					avoidance_direction = MyVec3(x_difference, 0.0, 0.0).normalized
-					print("Picking by location")
+					cls.debugprint("Picking by location")
 					if x_difference < 30:
 						# If we are perfectly aligned with the ball, just pick a side.
-							print("Picking arbitrarily")
+							cls.debugprint("Picking arbitrarily")
 							avoidance_direction = MyVec3(1, 0, 0)
 			
 			cls.target = ball.location - avoidance_direction * avoidance_distance
@@ -181,7 +176,7 @@ class Strat_TouchPredictedBall(Strategy):
 		# Change desired speed so that when dt is higher, make it lower, and when it's lower, make it higher??
 		cls.desired_speed = dist / max(0.01, dt)
 		cls.target = MyVec3(predicted_ball.physics.location)
-		# Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
+		# Debug.vector_2d_3d(MyVec3(predicted_ball.physics.location))
 
 		return cls.target
 
@@ -310,7 +305,7 @@ class Strat_ArriveWithSpeed(Strategy):
 		#time_to_accelerate = 
 		# Remember that if we want to dodge into the ball, we can 
 		
-		# Debug.vector_2d_3d(car, MyVec3(predicted_ball.physics.location))
+		# Debug.vector_2d_3d(MyVec3(predicted_ball.physics.location))
 
 strategies = [
 	Strat_Retreat,

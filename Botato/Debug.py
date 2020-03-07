@@ -8,8 +8,6 @@ from Objects import arena
 res = (1920, 1080)				# Since the renderer uses pixel coordinates instead of 0-1 coordinates, which is kinda lame tbh.
 local_ratio = 40				# Divide local coords by this number, in order to fit them on screen. Increasing this will reduce the scale of the debug display, but will not reduce rectangle sizes.
 
-# TODO (Big and not that important): Add a generic way for any part of Botato to add a function call and a list of kwargs for that function call, under any debug flag.
-
 # Debug toggles
 debug_strats 		= True
 debug_controls 		= False
@@ -21,6 +19,16 @@ debug_target 		= True
 debug_boostpads 	= False
 debug_scenarios 	= True
 
+car = None
+
+class DebugUtils:
+	debug=False
+
+	@classmethod
+	def debugprint(cls, s):
+		if cls.debug:
+			print(s)
+
 def ensure_color(r, color=None):
 	"""Helper function to get a default color if no color was specified to a render function."""
 	if(color==None):
@@ -28,7 +36,7 @@ def ensure_color(r, color=None):
 	else:
 		return color
 
-def shitty_3d_rectangle(car, loc, width=100, height=100, color=None):
+def shitty_3d_rectangle(loc, width=100, height=100, color=None):
 	"""Draw a rectangle out of 4 lines, until we get draw_rect_3d back."""
 	color = ensure_color(car.renderer, color)
 
@@ -37,17 +45,17 @@ def shitty_3d_rectangle(car, loc, width=100, height=100, color=None):
 	top_left = loc + (width/2, -height/2, 0)
 	top_right = loc + (-width/2, -height/2, 0)
 
-	line_2d_3d(car, bottom_left, bottom_right, color)
-	line_2d_3d(car, bottom_right, top_right, color)
-	line_2d_3d(car, top_right, top_left, color)
-	line_2d_3d(car, top_left, bottom_left, color)
+	line_2d_3d(bottom_left, bottom_right, color)
+	line_2d_3d(bottom_right, top_right, color)
+	line_2d_3d(top_right, top_left, color)
+	line_2d_3d(top_left, bottom_left, color)
 
-def text_2d(car, x, y, text, scale=2, color=None):
+def text_2d(x, y, text, scale=2, color=None):
 	r = car.renderer
 	color = ensure_color(r, color)
 	r.draw_string_2d(x, y, scale, scale, text, color)
 
-def rect_2d_from_center(car, x, y, width=10, height=10, color=None, offset=(0, 0)):
+def rect_2d_from_center(x, y, width=10, height=10, color=None, offset=(0, 0)):
 	"""Draw a rectangle given its center from the center of the screen. (As opposed to drawing it given its top-left corner, from the top-left corner of the screen) 
 	Level 1 function, should only be called by other debug functions."""
 	r = car.renderer
@@ -59,7 +67,7 @@ def rect_2d_from_center(car, x, y, width=10, height=10, color=None, offset=(0, 0
 
 	r.draw_rect_2d(x_screen-width/2, y_screen-height/2, width, height, True, color)	# This would be considered a call to a "Level 0" function, ie. the lowest level, most general-purpose function.
 
-def rect_2d_local(car, global_coords, width=10, height=10, color=None, offset=(0, 0)):
+def rect_2d_local(global_coords, width=10, height=10, color=None, offset=(0, 0)):
 	"""Convert global coords to local coords, then call rect_2d_from_center. 
 	Level 2 function, should mostly be called by other debug functions, but Botato can call it to see where something is in relation to him."""
 	r = car.renderer
@@ -71,9 +79,9 @@ def rect_2d_local(car, global_coords, width=10, height=10, color=None, offset=(0
 	x = local.y / local_ratio
 	y = -local.x / local_ratio
 
-	rect_2d_from_center(car, x, y, width, height, color, offset)
+	rect_2d_from_center(x, y, width, height, color, offset)
 
-def line_2d_from_center(car, x1, y1, x2, y2, color=None, offset=(0, 0)):
+def line_2d_from_center(x1, y1, x2, y2, color=None, offset=(0, 0)):
 	"""Draw a line given its points from the center of the screen, rather than the top left corner of the screen, so if x1=0 and y1=0, the line will come from the center of the screen.
 	Level 1 function."""
 	r = car.renderer
@@ -91,7 +99,7 @@ def line_2d_from_center(car, x1, y1, x2, y2, color=None, offset=(0, 0)):
 					y2_screen + offset[1], 
 					color)
 
-def line_2d_local(car, global_coords1, global_coords2=None, color=None, offset=(0, 0)):
+def line_2d_local(global_coords1, global_coords2=None, color=None, offset=(0, 0)):
 	"""Convert global coords to local coords, then draw a 2d line.
 	Level 2 function, should mostly be called by other debug functions."""
 	r = car.renderer
@@ -108,9 +116,9 @@ def line_2d_local(car, global_coords1, global_coords2=None, color=None, offset=(
 	x2 = local2.y / local_ratio
 	y2 = -local2.x / local_ratio
 
-	line_2d_from_center(car, x1, y1, x2, y2, color, offset)
+	line_2d_from_center( x1, y1, x2, y2, color, offset)
 
-def rect_2d_3d(car, global_coords, scale=10, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
+def rect_2d_3d(global_coords, scale=10, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
 	"""Draw a rectangle in 3D(global) and 2D(local) space.
 	Level 3 function, could be called by Botato when a Level 4 function is too specific to use."""
 	r = car.renderer
@@ -119,9 +127,9 @@ def rect_2d_3d(car, global_coords, scale=10, color=None, draw_2d=True, draw_3d=T
 	if(draw_3d):
 		r.draw_rect_3d(global_coords, scale, scale, True, color)
 	if(draw_2d):
-		rect_2d_local(car, global_coords, scale, scale, color, offset)
+		rect_2d_local(global_coords, scale, scale, color, offset)
 
-def line_2d_3d(car, global_coords1, global_coords2=None, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
+def line_2d_3d(global_coords1, global_coords2=None, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
 	"""Draw a line in 3D(global) and 2D (local) space.
 	Level 3 function."""
 	color = ensure_color(car.renderer, color)
@@ -129,9 +137,9 @@ def line_2d_3d(car, global_coords1, global_coords2=None, color=None, draw_2d=Tru
 	if(draw_3d):
 		car.renderer.draw_line_3d(global_coords1, global_coords2, color)
 	if(draw_2d):
-		line_2d_local(car, global_coords1, global_coords2, color, offset)
+		line_2d_local(global_coords1, global_coords2, color, offset)
 
-def vector_2d_3d(car, global_coords1, global_coords2=None, scale=10, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
+def vector_2d_3d(global_coords1, global_coords2=None, scale=10, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
 	"""Draw a line between global_coords1 and global_coords2 in 3D space.
 	Then draw a rectangle in 3D space at global_coords1.
 	Then draw the same line in the car's local coordinates, onto 2D (screen) space.
@@ -141,11 +149,11 @@ def vector_2d_3d(car, global_coords1, global_coords2=None, scale=10, color=None,
 		global_coords2 = car.location
 
 	# Line
-	line_2d_3d(car, global_coords1, global_coords2, 		color, draw_2d, draw_3d, offset)
+	line_2d_3d(global_coords1, global_coords2, 		color, draw_2d, draw_3d, offset)
 	# Rectangle
-	rect_2d_3d(car, global_coords1, 				scale, 	color, draw_2d, draw_3d, offset)
+	rect_2d_3d(global_coords1, 				scale, 	color, draw_2d, draw_3d, offset)
 
-def render_all(car):
+def render_all():
 	# Boost locations
 		if debug_boostpads:
 			boost_locations = [MyVec3(l.location.x, l.location.y, 50) for l in car.boost_locations]
@@ -158,21 +166,21 @@ def render_all(car):
 		if debug_target:
 			# Car / Center of local space
 			offset = (600, -200)
-			rect_2d_local(car, car.location, width=10, height=20, color=car.renderer.orange(), offset=offset)
+			rect_2d_local(car.location, width=10, height=20, color=car.renderer.orange(), offset=offset)
 
 			target = car.active_strategy.target
 			
 			# Car Velocity Vector
-			vector_2d_3d(car, car.location + car.velocity, car.location, color=car.renderer.blue(), draw_2d=True, offset=offset)
+			vector_2d_3d(car.location + car.velocity, car.location, color=car.renderer.blue(), draw_2d=True, offset=offset)
 
 			# Target Location Vector
-			vector_2d_3d(car, target, color=car.renderer.white(), draw_2d=False, draw_3d=True, offset=offset)
+			vector_2d_3d(target, color=car.renderer.white(), draw_2d=False, draw_3d=True, offset=offset)
 			
-			text_2d(car, 10, 240, "Yaw to target: " + str(int(car.yaw_to_target)))
-			text_2d(car, 10, 270, "Distance from target: " + str(int(car.distance_from_target)))
+			text_2d(10, 240, "Yaw to target: " + str(int(car.yaw_to_target)))
+			text_2d(10, 270, "Distance from target: " + str(int(car.distance_from_target)))
 			
 			time_to_reach = -1 if car.speed==0 else distance(car.location, target)/car.speed
-			text_2d(car, 10, 300, "ETA: " + str(time_to_reach))
+			text_2d(10, 300, "ETA: " + str(time_to_reach))
 
 	# Render prediction (hue indicates dt, red=near future, blue=distant future)
 		if car.ball_prediction is not None and debug_prediction:
@@ -194,21 +202,21 @@ def render_all(car):
 		vec2str = lambda vec: str(int(vec.x)) + " " + str(int(vec.y)) + " " + str(int(vec.z))
 		rot2str = lambda rot: str(int(rot.pitch*RAD_TO_DEG)) + " " + str(int(rot.yaw*RAD_TO_DEG)) + " " + str(int(rot.roll*RAD_TO_DEG))
 		if debug_car:
-			text_2d(car, 1400, 10, "Car Loc: " + vec2str(car.location) )
-			text_2d(car, 1400, 40, "Car Vel: " + vec2str(car.velocity) )
-			text_2d(car, 1400, 70, "Car Rot: " + rot2str(car.rotation) )
-			text_2d(car, 1273, 100, "Local Car Vel: " + vec2str(local_coords(car, car.velocity)) )
-			text_2d(car, 1400, 130, "Car Spd: " + str(int(car.velocity.length)) )
-			text_2d(car, 1400, 160, "Des Spd: " + str(int(car.active_strategy.desired_speed)) )
+			text_2d(1400, 10, "Car Loc: " + vec2str(car.location) )
+			text_2d(1400, 40, "Car Vel: " + vec2str(car.velocity) )
+			text_2d(1400, 70, "Car Rot: " + rot2str(car.rotation) )
+			text_2d(1273, 100, "Local Car Vel: " + vec2str(local_coords(car, car.velocity)) )
+			text_2d(1400, 130, "Car Spd: " + str(int(car.velocity.length)) )
+			text_2d(1400, 160, "Des Spd: " + str(int(car.active_strategy.desired_speed)) )
 
-			text_2d(car, 1400, 190, "Car AV: " + vec2str(car.av*1000))
+			text_2d(1400, 190, "Car AV: " + vec2str(car.av*1000))
 	
 	# Render Ball Transforms
 		if debug_ball:
-			text_2d(car, 1400, 300, "Ball Loc: " + vec2str(ball.location))
-			text_2d(car, 1400, 330, "Ball Vel: " + vec2str(ball.velocity))
-			text_2d(car, 1400, 360, "Ball Spd: " + str(int(ball.velocity.length)))
-			text_2d(car, 1400, 410, "Angle to ball: " + str(angle_to(car, ball)))
+			text_2d(1400, 300, "Ball Loc: " + vec2str(ball.location))
+			text_2d(1400, 330, "Ball Vel: " + vec2str(ball.velocity))
+			text_2d(1400, 360, "Ball Spd: " + str(int(ball.velocity.length)))
+			text_2d(1400, 410, "Angle to ball: " + str(angle_to(car, ball)))
 
 	# Render Strategies
 		if debug_strats:
@@ -217,7 +225,7 @@ def render_all(car):
 				if(s==car.active_strategy):
 					color = car.renderer.lime()
 				strat_string = s.name + ": " + str(s.viability)
-				text_2d(car, 10, 30+i*30, strat_string, color=color)
+				text_2d(10, 30+i*30, strat_string, color=color)
 	
 	# Render Controls
 		if debug_controls:
@@ -243,4 +251,4 @@ def render_all(car):
 
 	# Render scenario info
 		if debug_scenarios:
-			text_2d(car, 25, 1020, "Scenario :%s" %car.scenario_number )
+			text_2d(25, 1020, "Scenario :%s" %car.scenario_number )

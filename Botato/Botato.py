@@ -163,10 +163,10 @@ class Botato(BaseAgent):
 				return SimpleControllerState()	# Don't calculate anything during replays.
 
 			Preprocess.preprocess(self, packet)		# Cleaning up values
+			Debug.car = self
 
 			if self.game_seconds > self.last_snapshot + 2:
 				self.snapshots.append( (GameState.create_from_gametickpacket(self.packet), self.game_seconds) )
-				print("Saved a snapshot... num snapshots: %d" %len(self.snapshots))
 				self.last_snapshot = self.game_seconds
 				if len(self.snapshots) > 100:
 					self.snapshots.pop(0)
@@ -191,7 +191,7 @@ class Botato(BaseAgent):
 
 			# Debug Render - only for index==0 car.
 			# if(self.index==0):
-			Debug.render_all(self)
+			Debug.render_all()
 			self.renderer.end_rendering()
 
 			self.keyboard_input()

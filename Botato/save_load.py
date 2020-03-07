@@ -124,12 +124,6 @@ def save_packet_to_file(packet, filepath):
 	with open(filepath, 'w+') as outfile:
 		json.dump(packet_dict, outfile, indent=4)
 
-def load_packet_from_file(packet, filepath):
-	with open(filepath) as json_file:
-		data = json.load(json_file)
-		dict_to_packet_recursive(packet, data)
-	return packet
-
 def dict_to_packet_recursive(obj, data) -> None:
 	"""Recursively fill up the passed packet's fields with data from a dictionary. No need to return the packet, as the passed object is modified."""
 	typ = type(data)
@@ -148,3 +142,29 @@ def dict_to_packet_recursive(obj, data) -> None:
 				dict_to_packet_recursive(obj[i], data[i])
 			else:
 				obj[i] = data[i]
+
+def load_packet_from_file(packet, filepath):
+	with open(filepath) as json_file:
+		data = json.load(json_file)
+		dict_to_packet_recursive(packet, data)
+	return packet
+
+def flip_for_team(packet, team=0):
+	if team==1:
+		for c in packet.game_cars:
+			c.physics.location.y *= -1
+			c.physics.rotation.yaw *= -1
+			c.physics.velocity.y *= -1
+		ball = packet.game_ball.physics
+		ball.location.y *= -1
+		ball.velocity.y *= -1
+		ball.angular_velocity.y *= -1
+	return packet
+
+def save_for_team(packet, filepath, team=0):
+	packet = flip_for_team(packet, team)
+	save_packet_to_file(packet, filepath)
+	
+def load_for_team(packet, filepath, team=0):
+	packet = load_packet_from_file(packet, filepath)
+	return flip_for_team(packet, team)

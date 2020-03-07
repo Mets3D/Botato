@@ -151,13 +151,13 @@ class Botato(BaseAgent):
 		# Save scenario to file
 		if Keyboard.was_key_pressed("/"):
 			print("Saving game state...")
-			save_load.save_packet_to_file(self.packet, filepath)
+			save_load.save_for_team(self.packet, filepath, self.team)
 
 		# Load scenario from file
 		if Keyboard.was_key_pressed("enter"):
 			print("Loading game state...")
 			
-			packet_from_file = save_load.load_packet_from_file(self.packet, filepath)
+			packet_from_file = save_load.load_for_team(self.packet, filepath, self.team)
 			game_state_from_file = GameState.create_from_gametickpacket(packet_from_file)
 
 			self.set_game_state(game_state_from_file)

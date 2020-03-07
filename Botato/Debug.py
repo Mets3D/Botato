@@ -29,16 +29,16 @@ class DebugUtils:
 		if cls.debug:
 			print(s)
 
-def ensure_color(r, color=None):
+def ensure_color(color=None):
 	"""Helper function to get a default color if no color was specified to a render function."""
 	if(color==None):
-		return r.white()
+		return car.renderer.white()
 	else:
 		return color
 
 def shitty_3d_rectangle(loc, width=100, height=100, color=None):
 	"""Draw a rectangle out of 4 lines, until we get draw_rect_3d back."""
-	color = ensure_color(car.renderer, color)
+	color = ensure_color(color)
 
 	bottom_left = loc + (width/2, height/2, 0)
 	bottom_right = loc + (-width/2, height/2, 0)
@@ -51,27 +51,21 @@ def shitty_3d_rectangle(loc, width=100, height=100, color=None):
 	line_2d_3d(top_left, bottom_left, color)
 
 def text_2d(x, y, text, scale=2, color=None):
-	r = car.renderer
-	color = ensure_color(r, color)
-	r.draw_string_2d(x, y, scale, scale, text, color)
+	car.renderer.draw_string_2d(x, y, scale, scale, text, ensure_color(color))
 
 def rect_2d_from_center(x, y, width=10, height=10, color=None, offset=(0, 0)):
 	"""Draw a rectangle given its center from the center of the screen. (As opposed to drawing it given its top-left corner, from the top-left corner of the screen) 
 	Level 1 function, should only be called by other debug functions."""
-	r = car.renderer
-	color = ensure_color(r, color)
 
 	# Converting from our screen coords ((0,0) is center of screen) to RLBot screen coords ((0,0) is top-left corner)
 	x_screen = res[0]/2 + offset[0] + x
 	y_screen = res[1]/2 + offset[1] + y
 
-	r.draw_rect_2d(x_screen-width/2, y_screen-height/2, width, height, True, color)	# This would be considered a call to a "Level 0" function, ie. the lowest level, most general-purpose function.
+	car.renderer.draw_rect_2d(x_screen-width/2, y_screen-height/2, width, height, True, ensure_color(color))	# This would be considered a call to a "Level 0" function, ie. the lowest level, most general-purpose function.
 
 def rect_2d_local(global_coords, width=10, height=10, color=None, offset=(0, 0)):
 	"""Convert global coords to local coords, then call rect_2d_from_center. 
 	Level 2 function, should mostly be called by other debug functions, but Botato can call it to see where something is in relation to him."""
-	r = car.renderer
-	color = ensure_color(r, color)
 
 	local = local_coords(car, global_coords)
 
@@ -79,13 +73,11 @@ def rect_2d_local(global_coords, width=10, height=10, color=None, offset=(0, 0))
 	x = local.y / local_ratio
 	y = -local.x / local_ratio
 
-	rect_2d_from_center(x, y, width, height, color, offset)
+	rect_2d_from_center(x, y, width, height, ensure_color(color), offset)
 
 def line_2d_from_center(x1, y1, x2, y2, color=None, offset=(0, 0)):
 	"""Draw a line given its points from the center of the screen, rather than the top left corner of the screen, so if x1=0 and y1=0, the line will come from the center of the screen.
 	Level 1 function."""
-	r = car.renderer
-	color = ensure_color(r, color)
 
 	# Converting from our screen coords ((0,0) is center of screen) to RLBot screen coords ((0,0) is top-left corner)
 	x1_screen = res[0]/2 + x1
@@ -93,20 +85,16 @@ def line_2d_from_center(x1, y1, x2, y2, color=None, offset=(0, 0)):
 	x2_screen = res[0]/2 + x2
 	y2_screen = res[1]/2 + y2
 	return # draw_line_2d currently not supported in RLBot.
-	r.draw_line_2d(	x1_screen + offset[0], 
+	car.renderer.draw_line_2d(	x1_screen + offset[0], 
 					y1_screen + offset[1], 
 					x2_screen + offset[0], 
 					y2_screen + offset[1], 
-					color)
+					ensure_color(color))
 
-def line_2d_local(global_coords1, global_coords2=None, color=None, offset=(0, 0)):
+def line_2d_local(global_coords1, global_coords2=car.location, color=None, offset=(0, 0)):
 	"""Convert global coords to local coords, then draw a 2d line.
 	Level 2 function, should mostly be called by other debug functions."""
-	r = car.renderer
-	color = ensure_color(r, color)
-	if(global_coords2 == None):
-		global_coords2 = car.location
-	
+
 	local1 = local_coords(car, global_coords1)
 	local2 = local_coords(car, global_coords2)
 
@@ -116,13 +104,13 @@ def line_2d_local(global_coords1, global_coords2=None, color=None, offset=(0, 0)
 	x2 = local2.y / local_ratio
 	y2 = -local2.x / local_ratio
 
-	line_2d_from_center( x1, y1, x2, y2, color, offset)
+	line_2d_from_center( x1, y1, x2, y2, ensure_color(color), offset )
 
 def rect_2d_3d(global_coords, scale=10, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
 	"""Draw a rectangle in 3D(global) and 2D(local) space.
 	Level 3 function, could be called by Botato when a Level 4 function is too specific to use."""
 	r = car.renderer
-	color = ensure_color(r, color)
+	color = ensure_color(color)
 
 	if(draw_3d):
 		r.draw_rect_3d(global_coords, scale, scale, True, color)
@@ -132,7 +120,7 @@ def rect_2d_3d(global_coords, scale=10, color=None, draw_2d=True, draw_3d=True, 
 def line_2d_3d(global_coords1, global_coords2=None, color=None, draw_2d=True, draw_3d=True, offset=(0, 0)):
 	"""Draw a line in 3D(global) and 2D (local) space.
 	Level 3 function."""
-	color = ensure_color(car.renderer, color)
+	color = ensure_color(color)
 
 	if(draw_3d):
 		car.renderer.draw_line_3d(global_coords1, global_coords2, color)
@@ -144,7 +132,7 @@ def vector_2d_3d(global_coords1, global_coords2=None, scale=10, color=None, draw
 	Then draw a rectangle in 3D space at global_coords1.
 	Then draw the same line in the car's local coordinates, onto 2D (screen) space.
 	Level 4 (top level) function. Should be called by Botato for easiest and fastest debugging of vectors in both global and local space."""
-	color = ensure_color(car.renderer, color)
+	color = ensure_color(color)
 	if(global_coords2==None):
 		global_coords2 = car.location
 

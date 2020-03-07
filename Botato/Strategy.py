@@ -94,12 +94,6 @@ class Strat_Retreat(Strategy):
 			elif cls.target_before_jump:
 				cls.target = cls.target_before_jump
 
-		# NEXT UP:
-		# If our path is intersecting the ball, avoid the ball (In the future, we might want to hit the ball towards our own corner, actually)
-		# How to make this work with a predicted ball?
-		# Finish implementing will_intersect() in Utils.
-		# If we will intersect, the target should be put next to the ball, in the opposite direction of where it's currently moving. If it's moving slower, the target should be further away from the ball.
-
 	@classmethod
 	def control_car(cls, car):
 		""" Set the car's inputs using Maneuvers. """

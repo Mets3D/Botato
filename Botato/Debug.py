@@ -19,6 +19,7 @@ debug_car			= False
 debug_ball			= False
 debug_target 		= True
 debug_boostpads 	= False
+debug_scenarios 	= True
 
 def ensure_color(r, color=None):
 	"""Helper function to get a default color if no color was specified to a render function."""
@@ -145,9 +146,8 @@ def vector_2d_3d(car, global_coords1, global_coords2=None, scale=10, color=None,
 	rect_2d_3d(car, global_coords1, 				scale, 	color, draw_2d, draw_3d, offset)
 
 def render_all(car):
-		return
 	# Boost locations
-		if(debug_boostpads):
+		if debug_boostpads:
 			boost_locations = [MyVec3(l.location.x, l.location.y, 50) for l in car.boost_locations]
 			for i, boost_loc in enumerate(boost_locations):
 				color = car.renderer.red() if not car.boost_pads[i].is_active else car.renderer.white()
@@ -155,7 +155,7 @@ def render_all(car):
 				# shitty_3d_rectangle(car, MyVec3(boost_loc), color=color)
 
 	# Render target (line and square)
-		if(debug_target):
+		if debug_target:
 			# Car / Center of local space
 			offset = (600, -200)
 			rect_2d_local(car, car.location, width=10, height=20, color=car.renderer.orange(), offset=offset)
@@ -193,7 +193,7 @@ def render_all(car):
 	# Render Car Transforms
 		vec2str = lambda vec: str(int(vec.x)) + " " + str(int(vec.y)) + " " + str(int(vec.z))
 		rot2str = lambda rot: str(int(rot.pitch*RAD_TO_DEG)) + " " + str(int(rot.yaw*RAD_TO_DEG)) + " " + str(int(rot.roll*RAD_TO_DEG))
-		if(debug_car):
+		if debug_car:
 			text_2d(car, 1400, 10, "Car Loc: " + vec2str(car.location) )
 			text_2d(car, 1400, 40, "Car Vel: " + vec2str(car.velocity) )
 			text_2d(car, 1400, 70, "Car Rot: " + rot2str(car.rotation) )
@@ -204,14 +204,14 @@ def render_all(car):
 			text_2d(car, 1400, 190, "Car AV: " + vec2str(car.av*1000))
 	
 	# Render Ball Transforms
-		if(debug_ball):
+		if debug_ball:
 			text_2d(car, 1400, 300, "Ball Loc: " + vec2str(ball.location))
 			text_2d(car, 1400, 330, "Ball Vel: " + vec2str(ball.velocity))
 			text_2d(car, 1400, 360, "Ball Spd: " + str(int(ball.velocity.length)))
 			text_2d(car, 1400, 410, "Angle to ball: " + str(angle_to(car, ball)))
 
 	# Render Strategies
-		if(debug_strats):
+		if debug_strats:
 			for i, s in enumerate(Strategy.strategies):
 				color = car.renderer.white()
 				if(s==car.active_strategy):
@@ -220,7 +220,7 @@ def render_all(car):
 				text_2d(car, 10, 30+i*30, strat_string, color=color)
 	
 	# Render Controls
-		if(debug_controls):
+		if debug_controls:
 			# Dimensions
 			ctrl_disp = (20, 650)
 			ctrl_disp_size = 150
@@ -233,10 +233,14 @@ def render_all(car):
 			# White steering knob
 			color = car.renderer.lime() if car.controller.handbrake else car.renderer.white()		# Green when powersliding
 			forward = ctrl_disp[1]-10 + ctrl_disp_size/2 + (car.controller.pitch * (ctrl_disp_size-20)/2)
-			if(car.wheel_contact):
+			if car.wheel_contact:
 				forward = ctrl_disp[1]-10 + ctrl_disp_size/2 + (-car.controller.throttle * (ctrl_disp_size-20)/2)
 			car.renderer.draw_rect_2d(steer, forward, 20, 20, True, color)
 			
 			# Angular Velocity : Yaw Difference ratio
 			#av_to_yaw_ratio = (car.av.z) / (car.yaw_to_target+0.0000001)
 			#text_2d(car, ctrl_disp[0], ctrl_disp[1]+30, "AV.z:Yaw = " + str( av_to_yaw_ratio ))
+
+	# Render scenario info
+		if debug_scenarios:
+			text_2d(car, 25, 1020, "Scenario :%s" %car.scenario_number )

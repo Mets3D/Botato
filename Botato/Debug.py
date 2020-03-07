@@ -165,11 +165,11 @@ def render_all():
 			# Target Location Vector
 			vector_2d_3d(target, color=car.renderer.white(), draw_2d=False, draw_3d=True, offset=offset)
 			
-			text_2d(10, 240, "Yaw to target: " + str(int(car.yaw_to_target)))
-			text_2d(10, 270, "Distance from target: " + str(int(car.distance_from_target)))
+			# text_2d(10, 240, "Yaw to target: " + str(int(car.yaw_to_target)))
+			# text_2d(10, 270, "Distance from target: " + str(int(car.distance_from_target)))
 			
-			time_to_reach = -1 if car.speed==0 else distance(car.location, target)/car.speed
-			text_2d(10, 300, "ETA: " + str(time_to_reach))
+			# time_to_reach = -1 if car.speed==0 else distance(car.location, target)/car.speed
+			# text_2d(10, 300, "ETA: " + str(time_to_reach))
 
 	# Render prediction (hue indicates dt, red=near future, blue=distant future)
 		if car.ball_prediction is not None and debug_prediction:

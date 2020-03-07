@@ -106,16 +106,7 @@ class Strat_Retreat(Strategy):
 
 class Strat_HitBallTowardsTarget(Strategy):
 	name = "Hit Ball Towards Target"
-	ball_target = MyVec3(0, 0, 0)		# Where we want to hit the ball towards.
-
-	# TODO:
-	#	Make this not abysmal when Botato is to the side between the ball and the target (he will keep near-missing the ball)
-	# 	Create tests for this.
-	# 	Aim better towards the enemy net when close to it but at a sharp angle, by increasing desired distance.
-	# 	Could also aim at the opposite corner of the net rather than the center.
-	#	Tweak the maths on desired_distance_from_ball.
-	#	parameterize the target so it doesn't have to be the middle of the enemy goal.
-	#	Make sure Botato doesn't yeet up to the ceiling.
+	ball_target = MyVec3(0, 0, 0)		# Where we want the ball to be.
 
 	@classmethod
 	def evaluate(cls, car):
@@ -135,28 +126,55 @@ class Strat_HitBallTowardsTarget(Strategy):
 		if not ball:
 			return	# If there's no hittable ball, any strategy that relies on hitting a ball should evaluate to a hard 0, so that this doesn't happen.
 
+		####### Determine ball_target #######
+		#####################################
+		# Initialize ball target at the enemy goal.
 		cls.ball_target = MyVec3(car.enemy_goal.location)
-		# If we are facing away from the goal, shift the ball target towards the direction we are facing. This is to avoid overshooting to the sides.
+
+		# If we are facing away from the goal, shift the ball target along the goal line, towards the direction we are facing.
+		# This is to avoid overshooting to the sides.
 		car_angle_to_goal = angle_to(car, cls.ball_target)
-		Debug.text_2d(500, 500, str(car_angle_to_goal))
+		Debug.text_2d(25, 300, "Car to goal angle: " + str(round(car_angle_to_goal, 2)))
 		# We want to linear interpolate from -90 to 90 degrees, as -892 to 892 on goal X.
-		offset = car_angle_to_goal/130 * 892
+		offset = car_angle_to_goal/130 * 600	# This is a good start, but as usual, we probably need to use more factors than just the car's angle.
 		cls.ball_target.x += offset
 		Debug.rect_2d_3d(cls.ball_target, color=car.renderer.yellow())
 
+		####### Determine target ########
+		#################################
+		# We project a line from the ball_target towards the ball.
+		# Find a point along this line that we want Botato to move towards.
+		# The goal is to tweak the distance of this point along this line from the ball to get good hits in as many scenarios as possible.
 		car_ball_dist = distance(car, ball)
-		# We project a line from the target towards the ball, and find a point on it whose distance from the ball has some relationship with the car's distance from the ball.
-		# So when we're far away from the ball, we are driving towards a point far "behind"(from the perspective of the target) the ball.
-		# As the car gets closer to the ball, the distance of the target location from the ball decreases, which should cause it to turn towards the ball, after it has lined up the shot.
-		target_to_ball_vec = cls.ball_target - ball.location
 		desired_distance_from_ball = car_ball_dist/2
+
+		# Increase the desired distance from ball if the Car-Ball-Goal angle is tight (90 is tight, 180 is not tight)
+		car_ball_goal_angle = get_angles_of_triangle(car.location, ball.location, cls.ball_target)[1]
+		angle_tightness = (180 - car_ball_goal_angle) / 45
+		# desired_distance_from_ball *= angle_tightness
 		
+		target_to_ball_vec = cls.ball_target - ball.location
 		cls.target = ball - (target_to_ball_vec.normalized * desired_distance_from_ball)
+
+		# If Botato's angle to the ball is super wide, move the target closer to the car on the Y axis. 
+		# car_angle_to_ball = angle_to(car, ball)
+		# cls.target.y += car.sign * abs(car_angle_to_ball)/90 * 500
+
+		# If Botato's angle to the ball is tight, move the target closer to the car.
+		car_to_target = car.location - cls.target
+		Debug.line_2d_3d(cls.target, cls.target + car.sign * car_to_target)
+		# cls.target += car.sign * car_to_target/3
+
+		# Move the target closer to Botato
+		car_to_target_vec = car.location - cls.target
+		# cls.target += car.sign * car_to_target_vec/3
 
 		# Move the target closer to Botato on only the Y axis
 		cls.target.y -= car.sign * car_ball_dist/3
 
+		# Force the target to be on the ground.
 		cls.target[2]=17
+		# Force the target to be inside the pitch.
 		cls.target = raycast(cls.target, ball)
 
 		return cls.target

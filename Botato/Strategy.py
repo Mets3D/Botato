@@ -36,7 +36,7 @@ class Strategy(DebugUtils):
 		return M_Speed_On_Ground.control(car, cls.target, desired_speed=2300)
 
 class Strat_Retreat(Strategy):
-	name = "Defense"
+	name = "Retreat"
 	target_before_jump = None
 	dont_dodge = False
 	debug=True
@@ -63,6 +63,7 @@ class Strat_Retreat(Strategy):
 			car.send_quick_chats(QuickChats.CHAT_EVERYONE, QuickChats.Apologies_Whoops)
 
 		if need_to_avoid_ball:
+			
 			# Move the target behind where the ball is moving
 			avoidance_direction = ball.velocity.normalized	# TEST: this needs to be tested!
 			# Currently, we only pick avoidance direction based on our location when the ball is not moving. Otherwise we will always pick based on our facing angle. This is not correct! Improve with testing.

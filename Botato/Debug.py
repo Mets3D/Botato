@@ -1,9 +1,7 @@
-from Utils import *
+from botmath import *
 from Unreal import *
-import Botato
-import Strategy
 import colorsys
-from Objects import arena
+from Objects import GameObject, arena
 
 res = (1920, 1080)				# Since the renderer uses pixel coordinates instead of 0-1 coordinates, which is kinda lame tbh.
 local_ratio = 40				# Divide local coords by this number, in order to fit them on screen. Increasing this will reduce the scale of the debug display, but will not reduce rectangle sizes.
@@ -12,14 +10,14 @@ local_ratio = 40				# Divide local coords by this number, in order to fit them o
 debug_strats 		= True
 debug_controls 		= False
 debug_dodge 		= False
-debug_prediction 	= False
+debug_prediction 	= True
 debug_car			= False
 debug_ball			= False
 debug_target 		= True
 debug_boostpads 	= False
 debug_scenarios 	= True
 
-car = None
+car = GameObject()
 
 class DebugUtils:
 	debug=False
@@ -28,6 +26,9 @@ class DebugUtils:
 	def debugprint(cls, s):
 		if cls.debug:
 			print(s)
+	
+	def debug_line(co1, co2, color=None):
+		pass
 
 def ensure_color(color=None):
 	"""Helper function to get a default color if no color was specified to a render function."""
@@ -208,7 +209,7 @@ def render_all():
 
 	# Render Strategies
 		if debug_strats:
-			for i, s in enumerate(Strategy.strategies):
+			for i, s in enumerate(car.strategies):
 				color = car.renderer.white()
 				if(s==car.active_strategy):
 					color = car.renderer.lime()

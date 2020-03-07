@@ -4,6 +4,7 @@ import math, colorsys, random, copy, os
 from Unreal import Rotator, MyVec3
 from Objects import *
 from Utils import *
+from botmath import *
 from Training import *
 import Strategy
 import Debug
@@ -31,6 +32,7 @@ class Botato(BaseAgent):
 		super().initialize_agent()
 		
 		self.active_strategy = Strategy.strategies[0]
+		self.strategies = Strategy.strategies
 
 		# Debug and testing tools
 		self.initialize_keyboard()

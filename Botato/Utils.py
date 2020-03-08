@@ -8,8 +8,8 @@ from rlbot.utils.structures.quick_chats import QuickChats
 
 arena = MyVec3(8200, 10280, 2050)
 #test
-def will_intersect(car):
-	"""If we went in a straight line forwards at our current speed, would we hit the ball?"""
+def will_intersect(car, target):
+	"""If we went in a straight line towards the target, would we hit the ball?"""
 	# TODO: Would be nice to use predicted speed instead of just our current speed.
 	car_loc = car.location
 	prev_car_loc = MyVec3(car_loc)
@@ -23,8 +23,9 @@ def will_intersect(car):
 	throttle_accel = get_throttle_accel(car.velocity.size)
 	total_accel = throttle_accel + ACCEL_BOOST * (car.boost > 0)
 
-	direction = car.velocity.normalized
-	
+	# direction = car.velocity.normalized
+	direction = MyVec3(target - car.location).normalized
+
 	for ps in car.ball_prediction.slices:
 		ball_loc = MyVec3(ps.physics.location)
 		car_loc += direction * vel * dt

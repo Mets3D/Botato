@@ -57,9 +57,10 @@ class Strat_Retreat(Strategy):
 	def evaluate(cls, car):
 		value = 0
 
-		is_ball_between_car_and_own_goal = between(ball.location.y, car.location.y, car.own_goal.location.y)
-		value += (is_ball_between_car_and_own_goal) * 0.3
-		
+		tolerance = 600		# Our car can be this far on the wrong side of the ball until we initiate a retreat. 
+		on_wrong_side_of_ball = between(ball.location.y, car.location.y - car.sign * tolerance, car.own_goal.location.y)
+		value += (on_wrong_side_of_ball) * 0.3
+
 		cls.viability = value
 
 	@classmethod
@@ -67,7 +68,9 @@ class Strat_Retreat(Strategy):
 		""" The code for this got a bit out of hand, but I still don't think it deserves to be its own Strategy. But maybe"""
 		new_target = MyVec3(target)
 		
-		need_to_avoid_ball = will_intersect(car)
+		need_to_avoid_ball = will_intersect(car, target)
+		if need_to_avoid_ball:
+			print("Will intersect!!!!")
 		avoidance_distance = 350	# TODOs: This doesn't seem to do anything, and it should be set based on some factors rather than magic number.
 
 		Debug.text_2d(25, 420, "Car-Ball Distance: " + str(distance(car, ball)))
@@ -145,11 +148,8 @@ class Strat_HitBallTowardsTarget(Strategy):
 
 	@classmethod
 	def evaluate(cls, car):
-		value = 0
+		value = 0.1
 
-		between_ball_and_own_goal = between(car.location.y, ball.location.y, car.own_goal.location.y)
-		value += (between_ball_and_own_goal) * 0.3
-		
 		cls.viability = value
 
 	@classmethod

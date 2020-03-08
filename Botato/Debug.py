@@ -53,7 +53,7 @@ def shitty_3d_rectangle(loc, width=100, height=100, color=None):
 	line_2d_3d(top_right, top_left, color)
 	line_2d_3d(top_left, bottom_left, color)
 
-def text_2d(x, y, text, scale=2, color=None):
+def text_2d(x, y, text, scale=1, color=None):
 	car.renderer.draw_string_2d(x, y, scale, scale, text, ensure_color(color))
 
 def rect_2d_from_center(x, y, width=10, height=10, color=None, offset=(0, 0)):
@@ -112,11 +112,10 @@ def line_2d_local(global_coords1, global_coords2=car.location, color=None, offse
 def rect_2d_3d(global_coords, scale=10, color=None, draw_2d=False, draw_3d=True, offset=(0, 0)):
 	"""Draw a rectangle in 3D(global) and 2D(local) space.
 	Level 3 function, could be called by Botato when a Level 4 function is too specific to use."""
-	r = car.renderer
 	color = ensure_color(color)
 
 	if(draw_3d):
-		r.draw_rect_3d(global_coords, scale, scale, True, color)
+		car.renderer.draw_rect_3d(global_coords, scale, scale, True, color)
 	if(draw_2d):
 		rect_2d_local(global_coords, scale, scale, color, offset)
 

@@ -2,6 +2,7 @@ from Unreal import Rotator, MyVec3
 #from rlutilities.linear_algebra import vec3
 from Objects import *
 from Utils import *
+from botmath import *
 
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket, Vector3
@@ -90,4 +91,7 @@ def preprocess(self, packet: GameTickPacket):
 
 	# Derived values commonly used by Strategies or Maneuvers. Feel free to keep adding stuff, if it's used in two places and easy to calculate, put it here.
 	self.yaw_to_target = get_yaw_relative(self.location.x, self.location.y, self.active_strategy.target.x, self.active_strategy.target.y, self.rotation.yaw)
-	self.distance_from_target = (self.location - self.active_strategy.target).length
+	self.distance_from_target = distance(self.location, self.active_strategy.target)
+	
+	self.yaw_to_ball = get_yaw_relative(self.location.x, self.location.y, ball.location.x, ball.location.y, self.rotation.yaw)
+	self.distance_from_ball = distance(self.location, ball.location)

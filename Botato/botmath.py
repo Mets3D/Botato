@@ -164,15 +164,16 @@ def clamp(x, min_, max_) -> float:
 def loc(obj) -> MyVec3:
 	if isinstance(obj, MyVec3):
 		return obj
-	if isinstance(obj, list) or isinstance(obj, tuple):
+	elif isinstance(obj, list) or isinstance(obj, tuple):
 		return MyVec3(obj[0], obj[1], obj[2])
-	return obj.location
+	elif hasattr(obj, "location"):
+		return MyVec3(obj.location.x, obj.location.y, obj.location.z)
+	else:
+		return MyVec3(obj.x, obj.y, obj.z)
 
 def distance(loc1, loc2) -> MyVec3:
-	if(hasattr(loc1, "location")):
-		loc1 = loc1.location
-	if(hasattr(loc2, "location")):
-		loc2 = loc2.location
+	loc1 = loc(loc1)
+	loc2 = loc(loc2)
 	return (loc1-loc2).size
 
 def angle_to(source, target, direction = 1.0) -> float:

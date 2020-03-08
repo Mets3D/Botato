@@ -69,8 +69,6 @@ class Strat_Retreat(Strategy):
 		new_target = MyVec3(target)
 		
 		need_to_avoid_ball = will_intersect(car, target)
-		if need_to_avoid_ball:
-			print("Will intersect!!!!")
 		avoidance_distance = 350	# TODOs: This doesn't seem to do anything, and it should be set based on some factors rather than magic number.
 
 		Debug.text_2d(25, 420, "Car-Ball Distance: " + str(distance(car, ball)))
@@ -236,7 +234,8 @@ class Strat_HitBallTowardsTarget(Strategy):
 		speed_on_ground = M_Speed_On_Ground.get_output(car, cls.target, desired_speed=2300)
 		car.controller = speed_on_ground
 		car.controller.jump = False
-		# We should only dodge when close to the ball.
+		dodge_into_ball = M_Dodge_For_Shot.get_output(car, ball.location)
+		car.controller.jump = dodge_into_ball.jump
 
 class Strat_TouchPredictedBall(Strategy):
 	name = "Touch Predicted Ball"

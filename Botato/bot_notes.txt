@@ -1,0 +1,52 @@
+Notes about other bots:
+
+Botimus Prime 2.5:
+    Incredible accuracy. It seems to be aware of its hitbox and is able to place a plane of it exactly how it wants, resulting in consistent goals from any angle.
+    Has perfect timing to predicted balls. Does not hesitate between various predicted balls.
+    Able to jump up for those balls, but not too high.
+    Will smash the wall into its own corner to clear the ball, can even result in wall pinches.
+    Will collect boost when the enemy has ball control.
+    Willing to patiently sit mid-field on 100 boost when the enemy is closer to the ball.
+    Never ever powerslides, from what I can tell. But is great at reducing throttle to take sharp turns.
+    Mostly wins by taking massive shots across the field into the net.
+    Really good saves.
+    Has a ShadowDefense strategy.
+
+Kamael:
+    Will double jump high in the sky to touch the ball before almost any other bot, even if weakly, he can catch the ball and continue with a dribble, flick, score.
+    Also seems to be quite accurate with good predictions and hitbox awareness, but not nearly as ruthless as Botimus.
+    Goes backwards quite often.
+    Tries to dribble a lot. Can flick nicely.
+    Doesn't pick up boost on purpose?
+
+NV Derevo:
+    An atba with prediction?
+    If have boost: boost
+    Own goals
+
+Beast From The East:
+    Can correct orientation
+    Not very accurate shooting
+    Follows curves, sometimes?
+    Very rarely powerslides, but controls throttle to follow those curves.
+    The two circles drawn to his sides are his turning radius at his current speed. Pretty cool, that.
+
+Self-Driving Car:
+    Very accurate with hitbox-awareness. (Doesn't need to curve around the ball to angle a shot, just makes sure to touch it with the perfect part of his hitbox.)
+    Can wait for a predicted ball, jump up and hit it.
+    Will go up the wall and hit off-the-wall aerials. Terrifying.
+    Will turtle when he knows he's scored.
+    Seems to consider enemies near the ball, and won't make an offensive move until the enemy fucks themselves up.
+    Will challenge a ball being dribbled.
+    Will boost downwards to recover?
+    If the ball is directly above the enemy goal (due to having rolled up) he will try to jump up for it and score it every time.
+    Will hit the ball into the enemy corner to gain advantage.
+    Does not make tiny adjustments to gain 100 boost (even when the boost pad is pixels away from his route)
+    Does not waste boost when he doesn't need to.
+    Will take weak lovetaps instead of catching the ball and dribbling.
+    Somewhat frequently misses predicted balls - as if he simulated himself to get there faster, but didn't adjust his approach based on new predictions.
+
+ReliefBot:
+    I first put him up against SDC and he didn't get to show off much.
+    Uses the RLUtilities Aerial it seems, but I didn't see it pull off a good one.
+    Can dribble okay-ish?

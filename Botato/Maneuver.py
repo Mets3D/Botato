@@ -195,7 +195,7 @@ class M_Dodge_For_Shot(Maneuver):
 	controls = ["pitch", "yaw", "roll", "jump"]
 
 	@classmethod
-	def get_output(cls, car, target) -> SimpleControllerState:
+	def get_output(cls, car, ball, ball_target) -> SimpleControllerState:
 		controller = cls.controller
 		controller.pitch = car.controller.pitch
 		controller.yaw = car.controller.yaw
@@ -205,14 +205,17 @@ class M_Dodge_For_Shot(Maneuver):
 
 		dodge_delay = 0.18 - (2300-car.speed)/20000		# Time between jumping and flipping. If this value is too low, it causes Botato to scrape his nose on the floor. If this value is too high, Botato will dodge slower than optimal. The value has to be higher when our speed is lower. This calculates to 0.13 when our speed is 1300, and to 0.18 when our speed is 2300.
 
-		local_target_unit_vec = local_coords(car, target).normalized
+		local_target_unit_vec = local_coords(car, ball).normalized
 		
 		color = "yellow"
+		distance_to_dodge = car.speed/2
+		triangle_angles = get_angles_of_triangle(car.location, ball.location, ball_target)
+		lined_up = (180-triangle_angles[1]) < 40
 		if(cls.jumped):
-			# Step 2 - Tilt & wait for dodge delay.
+			# Step 2 - Tilt BACK & wait for dodge delay.
 			if( (car.game_seconds - cls.last_jump) <= dodge_delay):	# It's not time to dodge yet.
-				controller.pitch = -1
-				#controller.roll = local_target_unit_vec.y	# Try to dodge roughly towards target. TODO: This is not the best.
+				controller.pitch = 1
+				controller.roll = local_target_unit_vec.y	# Try to dodge roughly towards target. TODO: This is not the best.
 					
 				controller.jump = True	# "Hold" the jump key
 			
@@ -247,21 +250,23 @@ class M_Dodge_For_Shot(Maneuver):
 		elif(all([
 				abs(car.av.z) < 1500												,# We aren't spinning like crazy
 				car.yaw_to_ball < 40												,# We are more or less facing the target.
-				car.distance_from_ball < 250										,# We are close enough to the target (This might need some tweaking, as this distance limit would be very different if we're sideflipping for example.)
+				car.distance_from_ball < distance_to_dodge							,# We are close enough to the target (This might need some tweaking, as this distance limit would be very different if we're sideflipping for example.)
 				car.location.z < 18													,# We are on the floor
 				car.wheel_contact													,# We are touching the floor (slightly redundant, yes)
 				car.game_seconds - car.last_wheel_contact > cls.wheel_contact_delay	,# We haven't just landed (Trying to jump directly after landing will result in disaster, except after Wavedashing).
 				# abs(controller.steer) < dodge_steering_threshold					,# We aren't steering very hard
 				car.controller.handbrake == False									,# We aren't powersliding
+				lined_up															,# The car, ball, and ball target are more or less lined up in a straight line.
 		])): 
 			controller.jump = True
 			controller.pitch = -1
 			cls.jumped = True
 			cls.last_jump = car.game_seconds
 			color = "green"
+		
 		Debug.text_2d(1500, 500, "Yaw to Ball: " + str(round(car.yaw_to_ball, 2)), color=color)
 		Debug.text_2d(1500, 530, "Distance to Ball: " + str(round(car.distance_from_ball, 2)), color=color)
-
+		Debug.text_2d(1500, 560, "Required distance: " + str(round(distance_to_dodge, 2)), color=color)
 
 		return cls.controller
 

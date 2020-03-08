@@ -1,0 +1,269 @@
+{
+    "game_cars": [
+        {
+            "physics": {
+                "location": {
+                    "x": -531.8800048828125,
+                    "y": 1850.4599609375,
+                    "z": 16.3799991607666
+                },
+                "rotation": {
+                    "pitch": -0.01792840100824833,
+                    "yaw": -1.4241094589233398,
+                    "roll": 0.0
+                },
+                "velocity": {
+                    "x": 272.6910095214844,
+                    "y": -2190.600830078125,
+                    "z": 11.701000213623047
+                },
+                "angular_velocity": {
+                    "x": 0.023809999227523804,
+                    "y": -0.0004099999787285924,
+                    "z": -0.6535099744796753
+                }
+            },
+            "is_demolished": false,
+            "has_wheel_contact": true,
+            "is_super_sonic": true,
+            "is_bot": true,
+            "jumped": false,
+            "double_jumped": false,
+            "name": "Botato",
+            "team": 1,
+            "boost": 51,
+            "hitbox": {
+                "length": 127.9267807006836,
+                "width": 83.27995300292969,
+                "height": 31.299999237060547
+            },
+            "hitbox_offset": {
+                "x": 9.0,
+                "y": 0.0,
+                "z": 15.75
+            }
+        }
+    ],
+    "num_cars": 1,
+    "game_boosts": [
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": false,
+            "timer": 2.01666259765625
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": false,
+            "timer": 7.60003662109375
+        },
+        {
+            "is_active": false,
+            "timer": 2.41668701171875
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        },
+        {
+            "is_active": true,
+            "timer": 0.0
+        }
+    ],
+    "num_boost": 34,
+    "game_ball": {
+        "physics": {
+            "location": {
+                "x": -427.8599853515625,
+                "y": 2027.1400146484375,
+                "z": 93.12999725341797
+            },
+            "rotation": {
+                "pitch": -0.4176262617111206,
+                "yaw": -1.2805863618850708,
+                "roll": 1.6334978342056274
+            },
+            "velocity": {
+                "x": -277.70098876953125,
+                "y": -389.84100341796875,
+                "z": 0.0
+            },
+            "angular_velocity": {
+                "x": -4.272210121154785,
+                "y": 3.0433099269866943,
+                "z": 2.4852099418640137
+            }
+        },
+        "latest_touch": {
+            "player_name": "Botato",
+            "time_seconds": 679.7333374023438,
+            "hit_location": {
+                "x": -1434.122802734375,
+                "y": -576.26611328125,
+                "z": 52.543182373046875
+            },
+            "hit_normal": {
+                "x": 0.2919728755950928,
+                "y": -0.8361687064170837,
+                "z": 0.4642990529537201
+            },
+            "team": 1,
+            "player_index": 0
+        },
+        "drop_shot_info": {
+            "damage_index": 0,
+            "absorbed_force": 0.0,
+            "force_accum_recent": 0.0
+        },
+        "collision_shape": {
+            "type": 1,
+            "box": {
+                "length": 0.0,
+                "width": 0.0,
+                "height": 0.0
+            },
+            "sphere": {
+                "diameter": 182.49998474121094
+            },
+            "cylinder": {
+                "diameter": 0.0,
+                "height": 0.0
+            }
+        }
+    },
+    "game_info": {
+        "seconds_elapsed": 682.9666748046875,
+        "game_time_remaining": -662.1499633789062,
+        "is_overtime": false,
+        "is_unlimited_time": true,
+        "is_round_active": true,
+        "is_kickoff_pause": false,
+        "is_match_ended": false,
+        "world_gravity_z": -650.0,
+        "game_speed": 0.0
+    },
+    "teams": [
+        {
+            "team_index": 0,
+            "score": 1
+        },
+        {
+            "team_index": 1,
+            "score": 2
+        }
+    ],
+    "num_teams": 2
+}

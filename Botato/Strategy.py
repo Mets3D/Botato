@@ -234,7 +234,7 @@ class Strat_HitBallTowardsTarget(Strategy):
 		speed_on_ground = M_Speed_On_Ground.get_output(car, cls.target, desired_speed=2300)
 		car.controller = speed_on_ground
 		car.controller.jump = False
-		dodge_into_ball = M_Dodge_For_Shot.get_output(car, ball.location)
+		dodge_into_ball = M_Dodge_For_Shot.get_output(car, ball.location, cls.ball_target)
 		car.controller.jump = dodge_into_ball.jump
 
 class Strat_TouchPredictedBall(Strategy):

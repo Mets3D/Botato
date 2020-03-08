@@ -18,10 +18,21 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket
 from rlbot.utils.game_state_util import GameState, GameInfoState
 
 # TODO, in order of what I think will have the most impact on Botato's performance:
+# Ability to predict where the ball will go after a given car touch
+#	This would mean instead of trying to project lines from the ball_target to get Botato to hit the ball there with the center of his car, we could instead aim the ball by hitting it with a specific part of our hitbox.
+#	But this might also require RLUtilities, I'm not sure.
 # Ability to dodge into the ball
+#	Done, but this mostly just results in fucking up otherwise easy shots on open nets...
+# Reduce frequency of over-powersliding. See scenario: Shooting #8.
+#	Maybe we should implement multi-target strategies for this to work well.
+#	Or just remove powersiding and add better throttle control. This would enable (potentially much) better self-prediction as well.
+# Better corner play: 
+# 	Learn that hitting the ball into the corner is also good(not just towards the enemy goal)
+#	Learn clearing the ball from own corner (just drive right into it)
 # Kickoff strategies
-# Ability to get off the wall
+# Ability to get off the wall (Probably a separate maneuver that is called by the steer towards target maneuver?)
 # Improvements to strategies in cases where Car-Ball-Goal is a tight angle, but the ball is close to the wall (this routinely results in Botato powersliding on the ramp/wall, and ends in disaster)
+# Waste less boost; when it's not needed to reach the target in a timely manner and our boost is low, preserve it. Especially if we are picking up boost.
 # Improvements to determining soonest reachable ball (via better self-simulation)
 # Ability to re-orient and land on the floor
 # Ability to pick up boost pads on purpose. (First implement this for Retreat, then other things - I think it should be a call towards the end of find_target() that moves the target to a nearby poost pad if it's easy enough to reach and we need it desparately enough )
@@ -29,6 +40,7 @@ from rlbot.utils.game_state_util import GameState, GameInfoState
 	# Save: When the ball is predicted to land in our net, try to hit it away from our net.
 	# Clear: When the ball is in our corner, just hit it towards the corner or the wall, don't bother trying to hit it towards the enemy goal.
 	# Challenge
+# Ability to hit the ball when it's on the wall, as long as it's close to the wall.
 
 class Botato(BaseAgent):
 	def initialize_agent(self):
@@ -111,13 +123,13 @@ class Botato(BaseAgent):
 				self.last_snapshot = self.game_seconds
 
 		# Load Hard Coded Training scenarios
-		if Keyboard.was_key_pressed("0"):
+		if Keyboard.was_key_pressed("2"):
 			self.training = Training(self, "Diagonal Kickoff")
-		elif Keyboard.was_key_pressed("1"):
-			self.training = Training(self, "Straight Kickoff")
-		elif Keyboard.was_key_pressed("2"):
-			self.training = Training(self, "Prediction 1")
 		elif Keyboard.was_key_pressed("3"):
+			self.training = Training(self, "Straight Kickoff")
+		elif Keyboard.was_key_pressed("4"):
+			self.training = Training(self, "Prediction 1")
+		elif Keyboard.was_key_pressed("`"):
 			self.training = Training(self, "Random Ball Impulse")
 		# Reset current training, without changing randomization.
 		if Keyboard.was_key_pressed("r"):
@@ -200,20 +212,20 @@ class Botato(BaseAgent):
 			self.renderer.begin_rendering()
 			
 			# Make sure ball doesn't get scored :P
-			for i in range(0, 30):
-				prediction_slice = self.ball_prediction.slices[i]
-				loc = prediction_slice.physics.location
-				if(abs(loc.y) > 5500):
-					ball_vel = GameState.create_from_gametickpacket(self.packet).ball.physics.velocity
-					ball_vel.y *= -200
-					ball_state = BallState(
-						Physics(
-							velocity = ball_vel,
-						)
-					)
+			# for i in range(0, 30):
+			# 	prediction_slice = self.ball_prediction.slices[i]
+			# 	loc = prediction_slice.physics.location
+			# 	if(abs(loc.y) > 5300):
+			# 		ball_vel = GameState.create_from_gametickpacket(self.packet).ball.physics.velocity
+			# 		ball_vel.y *= -200
+			# 		ball_state = BallState(
+			# 			Physics(
+			# 				velocity = ball_vel,
+			# 			)
+			# 		)
 
-					game_state = GameState(ball=ball_state)
-					self.set_game_state(game_state)
+			# 		game_state = GameState(ball=ball_state)
+					# self.set_game_state(game_state)
 
 			# Choosing Strategy
 			for s in Strategy.strategies:
@@ -229,7 +241,7 @@ class Botato(BaseAgent):
 			Debug.render_all()
 			self.renderer.end_rendering()
 
-			self.keyboard_input()
+			# self.keyboard_input()
 
 			# Save a (shallow!!! Vectors aren't saved, just floats!) copy of self, to use in next tick.
 			self.last_self = copy.copy(self)

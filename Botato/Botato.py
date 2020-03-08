@@ -205,7 +205,7 @@ class Botato(BaseAgent):
 				loc = prediction_slice.physics.location
 				if(abs(loc.y) > 5500):
 					ball_vel = GameState.create_from_gametickpacket(self.packet).ball.physics.velocity
-					ball_vel.y *= -500
+					ball_vel.y *= -200
 					ball_state = BallState(
 						Physics(
 							velocity = ball_vel,

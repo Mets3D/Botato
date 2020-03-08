@@ -51,6 +51,7 @@ class Strat_Retreat(Strategy):
 	target_before_jump = None
 	dont_dodge = False
 	debug=True
+	keep_avoiding_ball=False	# When we are close to the ball, switch this on so it stays on and we keep avoiding the ball, until we successfuly avoided the ball.
 
 	@classmethod
 	def evaluate(cls, car):
@@ -62,12 +63,24 @@ class Strat_Retreat(Strategy):
 		cls.viability = value
 
 	@classmethod
-	def find_target(cls, car):
-		# First target should just be our own goal.
-		cls.target = car.own_goal.location
-
+	def avoid_ball(cls, car, target):
+		""" The code for this got a bit out of hand, but I still don't think it deserves to be its own Strategy. But maybe"""
+		new_target = MyVec3(target)
+		
 		need_to_avoid_ball = will_intersect(car)
-		avoidance_distance = 250	# TODOs: This doesn't seem to do anything, and it should be set based on some factors rather than magic number.
+		avoidance_distance = 350	# TODOs: This doesn't seem to do anything, and it should be set based on some factors rather than magic number.
+
+		Debug.text_2d(25, 420, "Car-Ball Distance: " + str(distance(car, ball)))
+		is_ball_between_car_and_own_goal = between(ball.location.y, car.location.y, car.own_goal.location.y)
+		if distance(car, ball) > 1500 or not is_ball_between_car_and_own_goal:
+			cls.keep_avoiding_ball = False
+
+		if cls.keep_avoiding_ball:
+			need_to_avoid_ball = True
+
+		if need_to_avoid_ball and distance(car, ball) < 1500:
+			cls.keep_avoiding_ball = True
+			Debug.text_2d(25, 550, "KEEP AVOIDING BALL!", color="red")
 
 		if need_to_avoid_ball and distance(car, ball) < 180:
 			# If we need to avoid the ball but we hit it...
@@ -76,8 +89,8 @@ class Strat_Retreat(Strategy):
 		if need_to_avoid_ball:
 			Debug.text_2d(25, 500, "NEED TO AVOID BALL!", color="red")
 			
-			# Move the target behind where the ball is moving
-			avoidance_direction = ball.velocity.normalized	# TEST: this needs to be tested!
+			# Move the target on the opposite side of the ball's X direction.
+			avoidance_direction = MyVec3(sign(ball.velocity.x), 0, 0).normalized
 			# Currently, we only pick avoidance direction based on our location when the ball is not moving. Otherwise we will always pick based on our facing angle. This is not correct! Improve with testing.
 			angle_to_ball = angle_to(car, ball)
 			x_difference = car.location.x - ball.location.x
@@ -100,12 +113,22 @@ class Strat_Retreat(Strategy):
 							cls.debugprint("Picking arbitrarily")
 							avoidance_direction = MyVec3(1, 0, 0)
 			
-			cls.target = ball.location - avoidance_direction * avoidance_distance
+			new_target = ball.location - avoidance_direction * avoidance_distance
 			
+			# In case Botato decided to dodge while we were avoiding a ball, make sure we don't change target mid-dodge. NOTE: This should be redundant due to keep_avoiding_ball feature.
 			if car.wheel_contact:
-				cls.target_before_jump = cls.target
+				cls.target_before_jump = new_target
 			elif cls.target_before_jump:
-				cls.target = cls.target_before_jump
+				new_target = cls.target_before_jump
+			
+		return new_target
+
+	@classmethod
+	def find_target(cls, car):
+		# First target should just be our own goal.
+		cls.target = car.own_goal.location
+
+		cls.target = cls.avoid_ball(car, cls.target)			
 
 	@classmethod
 	def control_car(cls, car):
